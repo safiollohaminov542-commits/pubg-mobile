@@ -1,0 +1,2290 @@
+{% extends "base.html" %}
+{% block title %}Заявкаҳо - Kanban{% endblock %}
+
+{% block content %}
+<style>
+    /* ==================== ROOT VARIABLES ==================== */
+    :root {
+        --bg-primary: #f5f7fa;
+        --bg-secondary: #ffffff;
+        --bg-tertiary: #f0f2f5;
+        --bg-card: #ffffff;
+        --bg-column: #f8f9fa;
+        --border-color: #e9ecef;
+        --border-light: #f1f3f5;
+        --text-primary: #212529;
+        --text-secondary: #6c757d;
+        --text-tertiary: #adb5bd;
+        --accent-blue: #3b82f6;
+        --accent-purple: #8b5cf6;
+        --accent-green: #22c55e;
+        --accent-red: #ef4444;
+        --accent-orange: #f59e0b;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+        --shadow-md: 0 2px 4px -1px rgba(0, 0, 0, 0.05);
+        --shadow-lg: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+        --shadow-xl: 0 8px 24px -4px rgba(0, 0, 0, 0.1);
+        --transition: all 0.2s ease;
+        --radius-sm: 6px;
+        --radius-md: 10px;
+        --radius-lg: 14px;
+        --radius-xl: 18px;
+    }
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    .kanban-wrapper {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        background: var(--bg-primary);
+        overflow: hidden;
+    }
+
+    /* ==================== HEADER ==================== */
+    .kanban-header {
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-color);
+        padding: 10px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        z-index: 20;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .board-icon {
+        width: 38px;
+        height: 38px;
+        background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .board-icon:hover {
+        transform: scale(1.02);
+    }
+
+    .board-title-box {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .board-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .board-stats {
+        font-size: 11px;
+        color: var(--text-tertiary);
+        margin-top: 2px;
+    }
+
+    .board-stats span {
+        color: var(--accent-blue);
+        font-weight: 600;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    /* ==================== FILTERS ==================== */
+    .filters-bar {
+        background: var(--bg-secondary);
+        padding: 8px 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        z-index: 15;
+        overflow-x: auto;
+    }
+
+    .filters-left {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        flex: 1;
+    }
+
+    .filters-right {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .filter-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--bg-tertiary);
+        padding: 6px 12px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-color);
+    }
+
+    .filter-group.primary {
+        border-color: var(--accent-blue);
+        background: rgba(59, 130, 246, 0.05);
+    }
+
+    .filter-group i {
+        color: var(--accent-blue);
+        font-size: 12px;
+    }
+
+    .filter-group input, .filter-group select {
+        background: transparent;
+        border: none;
+        color: var(--text-primary);
+        padding: 4px 0;
+        font-size: 12px;
+        outline: none;
+    }
+
+    .filter-group.primary input, .filter-group.primary select {
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .filter-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--accent-blue);
+        white-space: nowrap;
+    }
+
+    /* ==================== KANBAN MAIN ==================== */
+    .kanban-main {
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .board-scroll {
+        height: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 16px;
+        transition: background 0.3s ease;
+    }
+
+    .kanban-board {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+        height: 100%;
+        min-width: min-content;
+    }
+
+    /* ==================== COLUMN ==================== */
+    .kanban-column {
+        min-width: 300px;
+        width: 300px;
+        max-height: calc(100vh - 140px);
+        background: var(--bg-column);
+        border-radius: var(--radius-lg);
+        display: flex;
+        flex-direction: column;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-color);
+        flex-shrink: 0;
+    }
+
+    .kanban-column.drag-over {
+        border-left: 2px solid var(--accent-blue);
+        background: var(--bg-tertiary);
+    }
+
+    .column-header {
+        padding: 10px 14px;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+        flex-shrink: 0;
+    }
+
+    .column-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .column-drag-handle {
+        cursor: grab;
+        color: var(--text-tertiary);
+        font-size: 12px;
+    }
+
+    .column-drag-handle:active {
+        cursor: grabbing;
+    }
+
+    .column-title h3 {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .column-badge {
+        background: rgba(59, 130, 246, 0.1);
+        border-radius: 20px;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--accent-blue);
+    }
+
+    .column-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .column-actions i {
+        cursor: pointer;
+        color: var(--text-tertiary);
+        transition: var(--transition);
+        font-size: 12px;
+    }
+
+    .column-actions i:hover {
+        color: var(--accent-blue);
+    }
+
+    /* Cards Container */
+    .cards-container {
+        padding: 10px;
+        flex: 1;
+        overflow-y: auto;
+        min-height: 100px;
+    }
+
+    .cards-container::-webkit-scrollbar {
+        width: 3px;
+    }
+
+    .cards-container::-webkit-scrollbar-track {
+        background: var(--border-color);
+        border-radius: 10px;
+    }
+
+    .cards-container::-webkit-scrollbar-thumb {
+        background: var(--accent-blue);
+        border-radius: 10px;
+    }
+
+    /* ==================== REQUEST CARD ==================== */
+    .request-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-md);
+        padding: 10px;
+        margin-bottom: 10px;
+        cursor: grab;
+        transition: var(--transition);
+        border: 1px solid var(--border-color);
+        position: relative;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .request-card:active {
+        cursor: grabbing;
+    }
+
+    .request-card.dragging {
+        opacity: 0.5;
+    }
+
+    .request-card.drag-over-top {
+        border-top: 2px solid var(--accent-blue);
+    }
+
+    .request-card.drag-over-bottom {
+        border-bottom: 2px solid var(--accent-blue);
+    }
+
+    .request-card:hover {
+        transform: translateY(-1px);
+        border-color: var(--accent-blue);
+        box-shadow: var(--shadow-md);
+    }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .card-name {
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text-primary);
+        background: rgba(59, 130, 246, 0.08);
+        padding: 3px 8px;
+        border-radius: 16px;
+    }
+
+    .card-actions {
+        display: flex;
+        gap: 4px;
+        opacity: 0;
+        transition: var(--transition);
+    }
+
+    .request-card:hover .card-actions {
+        opacity: 1;
+    }
+
+    .card-actions button {
+        background: var(--bg-tertiary);
+        border: none;
+        border-radius: var(--radius-sm);
+        padding: 3px 6px;
+        cursor: pointer;
+        font-size: 10px;
+        color: var(--text-secondary);
+    }
+
+    .card-actions button:hover {
+        background: var(--accent-blue);
+        color: white;
+    }
+
+    .card-phone {
+        font-size: 11px;
+        color: var(--accent-blue);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-bottom: 6px;
+        font-family: monospace;
+    }
+
+    .card-info {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 6px;
+    }
+
+    .info-tag {
+        background: var(--bg-tertiary);
+        padding: 2px 6px;
+        border-radius: 12px;
+        font-size: 9px;
+        color: var(--text-secondary);
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+    }
+
+    .files-preview {
+        display: flex;
+        gap: 6px;
+        margin-top: 6px;
+        flex-wrap: wrap;
+    }
+
+    .file-thumb {
+        width: 32px;
+        height: 32px;
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+    }
+
+    .file-thumb:hover {
+        border-color: var(--accent-blue);
+    }
+
+    .file-thumb img, .file-thumb video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .card-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 9px;
+        color: var(--text-tertiary);
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid var(--border-light);
+    }
+
+    /* Add Column Button */
+    .add-column-btn {
+        min-width: 300px;
+        width: 300px;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-lg);
+        padding: 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: var(--transition);
+        border: 1px dashed var(--border-color);
+        color: var(--text-tertiary);
+        flex-shrink: 0;
+        font-size: 12px;
+    }
+
+    .add-column-btn:hover {
+        background: var(--bg-tertiary);
+        border-color: var(--accent-blue);
+        color: var(--accent-blue);
+    }
+
+    /* ==================== BOTTOM BOARDS PANEL ==================== */
+    .bottom-panel {
+        background: var(--bg-secondary);
+        border-top: 1px solid var(--border-color);
+        padding: 6px 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        overflow-x: auto;
+        z-index: 10;
+    }
+
+    .bottom-panel::-webkit-scrollbar {
+        height: 3px;
+    }
+
+    .board-tab {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 14px;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: var(--transition);
+        background: var(--bg-tertiary);
+        flex-shrink: 0;
+        font-size: 12px;
+    }
+
+    .board-tab.active {
+        background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+        color: white;
+    }
+
+    .board-tab.active span {
+        color: white;
+    }
+
+    .board-tab.active i {
+        color: white;
+    }
+
+    .board-tab:hover {
+        transform: translateY(-1px);
+    }
+
+    .board-tab-icon {
+        width: 24px;
+        height: 24px;
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+    }
+
+    .board-tab-name {
+        font-size: 12px;
+        color: var(--text-primary);
+    }
+
+    .create-board-tab {
+        border: 1px dashed var(--border-color);
+        background: transparent;
+    }
+
+    /* ==================== MODALS ==================== */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(3px);
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        background: var(--bg-secondary);
+        margin: auto;
+        border-radius: var(--radius-xl);
+        width: 90%;
+        max-width: 700px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow-xl);
+        border: 1px solid var(--border-color);
+        animation: modalSlideIn 0.2s ease;
+    }
+
+    .modal-large {
+        max-width: 850px;
+    }
+
+    @keyframes modalSlideIn {
+        from { opacity: 0; transform: scale(0.98); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    .modal-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+
+    .modal-header h2 {
+        font-size: 18px;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .modal-header .close {
+        font-size: 24px;
+        cursor: pointer;
+        color: var(--text-tertiary);
+    }
+
+    .modal-header .close:hover {
+        color: var(--accent-red);
+    }
+
+    .modal-body {
+        padding: 20px;
+        max-height: 65vh;
+        overflow-y: auto;
+    }
+
+    .modal-footer {
+        padding: 14px 20px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    /* Forms */
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .form-group input, .form-group select, .form-group textarea {
+        width: 100%;
+        padding: 8px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        color: var(--text-primary);
+        font-size: 13px;
+        transition: var(--transition);
+    }
+
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    /* Progress Bar */
+    .progress-container {
+        margin-top: 8px;
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 4px;
+        background: var(--bg-tertiary);
+        border-radius: 2px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+        transition: width 0.3s;
+    }
+
+    .file-list {
+        margin-top: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .file-item {
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-sm);
+        padding: 4px 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        border: 1px solid var(--border-color);
+    }
+
+    .file-item button {
+        background: none;
+        border: none;
+        color: var(--accent-red);
+        cursor: pointer;
+    }
+
+    /* View Modal */
+    .view-modal-content {
+        max-width: 550px;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .info-item {
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-md);
+        padding: 12px;
+    }
+
+    .info-label {
+        font-size: 10px;
+        color: var(--text-tertiary);
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .info-value {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .full-width {
+        grid-column: span 2;
+    }
+
+    .copy-btn {
+        background: var(--accent-blue);
+        border: none;
+        color: white;
+        padding: 4px 10px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-size: 11px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 4px;
+    }
+
+    .copy-btn:hover {
+        background: var(--accent-purple);
+    }
+
+    .media-gallery {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .media-item {
+        text-align: center;
+        position: relative;
+        user-select: none;
+    }
+
+    .media-item img, .media-item video {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border-radius: var(--radius-md);
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        cursor: pointer;
+    }
+
+    .media-item .file-icon {
+        width: 100px;
+        height: 100px;
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        border: 1px solid var(--border-color);
+    }
+
+    .copy-media-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(0, 0, 0, 0.6);
+        border: none;
+        color: white;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+    }
+
+    .copy-media-btn:hover {
+        background: var(--accent-blue);
+    }
+
+    /* Buttons */
+    .btn-primary {
+        background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+        border: none;
+        padding: 8px 16px;
+        border-radius: var(--radius-md);
+        color: white;
+        font-weight: 500;
+        font-size: 12px;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        padding: 8px 16px;
+        border-radius: var(--radius-md);
+        color: var(--text-primary);
+        font-size: 12px;
+        cursor: pointer;
+    }
+
+    .btn-secondary:hover {
+        background: var(--border-color);
+    }
+
+    .btn-sm {
+        padding: 5px 12px;
+        font-size: 11px;
+    }
+
+    /* Color Picker */
+    .color-palette {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+
+    .color-option {
+        width: 28px;
+        height: 28px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        border: 2px solid transparent;
+    }
+
+    .color-option:hover {
+        transform: scale(1.05);
+    }
+
+    /* Toast */
+    .toast {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: var(--bg-secondary);
+        border-left: 3px solid var(--accent-green);
+        border-radius: var(--radius-md);
+        padding: 10px 16px;
+        color: var(--text-primary);
+        z-index: 1001;
+        box-shadow: var(--shadow-lg);
+        animation: slideInRight 0.3s ease;
+        font-size: 13px;
+    }
+
+    @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+
+    .loading {
+        text-align: center;
+        padding: 30px;
+        color: var(--text-tertiary);
+        font-size: 13px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .kanban-column {
+            min-width: 260px;
+            width: 260px;
+        }
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+        .full-width {
+            grid-column: span 1;
+        }
+    }
+</style>
+
+<div class="kanban-wrapper">
+    <!-- Header -->
+    <div class="kanban-header">
+        <div class="header-left">
+            <div class="board-icon" onclick="showSelectBoardModal()">
+                <i class="fas fa-columns"></i>
+            </div>
+            <div class="board-title-box">
+                <div class="board-title" id="currentBoardTitle">Заявкаҳо</div>
+                <div class="board-stats">
+                    <i class="fas fa-chalkboard-teacher"></i> Ҳамагӣ: <span id="totalRequestsCount">0</span>
+                </div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-secondary btn-sm" onclick="showBoardSettings()" title="Танзимот">
+                <i class="fas fa-sliders-h"></i>
+            </button>
+            <button class="btn-secondary btn-sm" onclick="showAddColumnModal()" title="Колонкаи нав">
+                <i class="fas fa-plus"></i> Колонка
+            </button>
+            <button class="btn-primary btn-sm" onclick="showAddRequestModal()" title="Заявкаи нав">
+                <i class="fas fa-plus-circle"></i> Заявка
+            </button>
+            <button class="btn-secondary btn-sm" onclick="exportBoard()" title="Экспорт">
+                <i class="fas fa-file-excel"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-bar">
+        <div class="filters-left">
+            <!-- PRIMARY: Нарх, Квадрат, Ошёна, Нарх/м² -->
+            <div class="filter-group primary">
+                <i class="fas fa-credit-card"></i>
+                <span class="filter-label">Нарх:</span>
+                <input type="number" id="priceMinFilter" placeholder="аз" style="width:75px" oninput="filterRequests(); saveFilters()">
+                <span style="color:var(--text-tertiary)">—</span>
+                <input type="number" id="priceMaxFilter" placeholder="то" style="width:75px" oninput="filterRequests(); saveFilters()">
+                <span style="font-size:11px;color:var(--text-tertiary)">C</span>
+            </div>
+            <div class="filter-group primary">
+                <i class="fas fa-ruler-combined"></i>
+                <span class="filter-label">м²:</span>
+                <input type="number" id="areaMinFilter" placeholder="аз" style="width:65px" oninput="filterRequests(); saveFilters()">
+                <span style="color:var(--text-tertiary)">—</span>
+                <input type="number" id="areaMaxFilter" placeholder="то" style="width:65px" oninput="filterRequests(); saveFilters()">
+            </div>
+            <div class="filter-group primary">
+                <i class="fas fa-layer-group"></i>
+                <span class="filter-label">Ошёна:</span>
+                <input type="number" id="floorMinFilter" placeholder="аз" style="width:55px" oninput="filterRequests(); saveFilters()">
+                <span style="color:var(--text-tertiary)">—</span>
+                <input type="number" id="floorMaxFilter" placeholder="то" style="width:55px" oninput="filterRequests(); saveFilters()">
+            </div>
+            <div class="filter-group primary">
+                <i class="fas fa-chart-line"></i>
+                <span class="filter-label">C/м²:</span>
+                <input type="number" id="priceM2MinFilter" placeholder="аз" style="width:75px" oninput="filterRequests(); saveFilters()">
+                <span style="color:var(--text-tertiary)">—</span>
+                <input type="number" id="priceM2MaxFilter" placeholder="то" style="width:75px" oninput="filterRequests(); saveFilters()">
+            </div>
+        </div>
+        <div class="filters-right">
+            <div class="filter-group">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Ҷустуҷӯ..." oninput="filterRequests(); saveFilters()">
+            </div>
+            <div class="filter-group">
+                <i class="fas fa-building"></i>
+                <select id="typeFilter" onchange="filterRequests(); saveFilters()">
+                    <option value="all">Ҳама</option>
+                    <option value="новостройка">🏗️ Навсохт</option>
+                    <option value="коробка">📦 Блок</option>
+                    <option value="котлован">🕳️ Котлован</option>
+                    <option value="Коммерческая">🏢 Тиҷоратӣ</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <i class="fas fa-user"></i>
+                <select id="authorFilter" onchange="filterRequests(); saveFilters()">
+                    <option value="all">Ҳама</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <i class="fas fa-calendar"></i>
+                <select id="dateFilter" onchange="filterRequests(); saveFilters()">
+                    <option value="all">Ҳама вақт</option>
+                    <option value="today">Имрӯз</option>
+                    <option value="week">Ҳафта</option>
+                    <option value="month">Моҳ</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <i class="fas fa-columns"></i>
+                <select id="columnFilter" onchange="filterRequests(); saveFilters()">
+                    <option value="all">Ҳама колонкаҳо</option>
+                </select>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="resetFilters()">
+                <i class="fas fa-undo-alt"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Kanban Board -->
+    <div class="kanban-main">
+        <div class="board-scroll" id="boardContainer">
+            <div class="kanban-board" id="kanbanBoard">
+                <div class="loading"><i class="fas fa-spinner fa-pulse"></i> Боргирӣ...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Boards Panel -->
+    <div class="bottom-panel" id="boardsBottomPanel"></div>
+</div>
+
+<!-- Modal: Board -->
+<div id="boardModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="boardModalTitle"><i class="fas fa-plus-circle"></i> Доскаи нав</h2>
+            <span class="close" onclick="closeBoardModal()">&times;</span>
+        </div>
+        <form id="boardForm">
+            <input type="hidden" id="boardId">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Номи доска</label>
+                    <input type="text" id="boardTitle" required>
+                </div>
+                <div class="form-group">
+                    <label>Ранг</label>
+                    <input type="color" id="boardColor" value="#f8fafc">
+                </div>
+                <div class="form-group">
+                    <label>Намуд</label>
+                    <select id="boardIsPublic">
+                        <option value="1">🌍 Ҳамагӣ</option>
+                        <option value="0">🔒 Шахсӣ</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeBoardModal()">Бекор</button>
+                <button type="submit" class="btn-primary">Сабт</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Select Board -->
+<div id="selectBoardModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h2><i class="fas fa-columns"></i> Интихоби доска</h2>
+            <span class="close" onclick="closeSelectBoardModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <input type="text" id="boardSearch" placeholder="🔎 Ҷустуҷӯ..." onkeyup="filterBoardsList()">
+            </div>
+            <div id="boardsListContainer" style="max-height: 350px; overflow-y: auto;"></div>
+            <button class="btn-primary" style="width: 100%; margin-top: 15px;" onclick="showAddBoardModal(); closeSelectBoardModal();">
+                <i class="fas fa-plus"></i> Доскаи нав
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Board Settings -->
+<div id="boardSettingsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-cog"></i> Танзимот</h2>
+            <span class="close" onclick="closeBoardSettingsModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Ном</label>
+                <input type="text" id="settingsBoardTitle">
+            </div>
+            <div class="form-group">
+                <label>Ранг</label>
+                <input type="color" id="settingsBoardColor">
+            </div>
+            <div class="form-group">
+                <label>Намуд</label>
+                <select id="settingsBoardIsPublic">
+                    <option value="1">Ҳамагӣ</option>
+                    <option value="0">Шахсӣ</option>
+                </select>
+            </div>
+            <hr style="margin: 15px 0;">
+            <button class="btn-secondary" onclick="deleteCurrentBoard()" style="width: 100%;">
+                <i class="fas fa-trash-alt"></i> Нест кардан
+            </button>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeBoardSettingsModal()">Бекор</button>
+            <button class="btn-primary" onclick="updateCurrentBoard()">Сабт</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Column -->
+<div id="columnModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="columnModalTitle"><i class="fas fa-plus-circle"></i> Колонкаи нав</h2>
+            <span class="close" onclick="closeColumnModal()">&times;</span>
+        </div>
+        <form id="columnForm">
+            <input type="hidden" id="columnId">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Номи колонка</label>
+                    <input type="text" id="columnTitle" required>
+                </div>
+                <div class="form-group">
+                    <label>Ранг</label>
+                    <div class="color-palette">
+                        <div class="color-option" style="background:#3b82f6;" data-color="#3b82f6"></div>
+                        <div class="color-option" style="background:#22c55e;" data-color="#22c55e"></div>
+                        <div class="color-option" style="background:#f59e0b;" data-color="#f59e0b"></div>
+                        <div class="color-option" style="background:#ef4444;" data-color="#ef4444"></div>
+                        <div class="color-option" style="background:#8b5cf6;" data-color="#8b5cf6"></div>
+                        <div class="color-option" style="background:#ec4899;" data-color="#ec4899"></div>
+                        <div class="color-option" style="background:#06b6d4;" data-color="#06b6d4"></div>
+                    </div>
+                    <input type="color" id="columnColor" value="#3b82f6" style="width: 100%; margin-top: 8px;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeColumnModal()">Бекор</button>
+                <button type="submit" class="btn-primary">Сабт</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Request Add/Edit -->
+<div id="requestModal" class="modal modal-large">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="requestModalTitle"><i class="fas fa-plus-circle"></i> Заявкаи нав</h2>
+            <span class="close" onclick="closeRequestModal()">&times;</span>
+        </div>
+        <form id="requestForm">
+            <input type="hidden" id="requestId">
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-building"></i> Намуд *</label>
+                        <select id="propertyType" required>
+                            <option value="новостройка">🏗️ Навсохт</option>
+                            <option value="коробка">📦 Блок</option>
+                            <option value="котлован">🕳️ Котлован</option>
+                            <option value="Коммерческая">🏢 Тиҷоратӣ</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-map-marker-alt"></i> Суроға *</label>
+                        <input type="text" id="address" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-ruler-combined"></i> Масоҳат (м²) *</label>
+                        <input type="number" id="area" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-door-open"></i> Ҳуҷраҳо *</label>
+                        <input type="number" id="rooms" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-window-maximize"></i> Тирезаҳо *</label>
+                        <input type="number" id="windows" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-layer-group"></i> Ошёна *</label>
+                        <input type="number" id="floor" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-building"></i> Ошёнаҳои бино *</label>
+                        <input type="number" id="totalFloors" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-credit-card"></i> Нархи умумӣ (C) *</label>
+                        <input type="number" id="totalPrice" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-chart-line"></i> Нархи як м² (C) *</label>
+                        <input type="number" id="pricePerM2" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-phone-alt"></i> Телефон *</label>
+                        <input type="tel" id="phone" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-user"></i> Номи мизоҷ *</label>
+                        <input type="text" id="clientName" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-user-check"></i> Иҷрокунанда *</label>
+                        <select id="executorId" required></select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-comment"></i> Шарҳ</label>
+                    <textarea id="comment" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-paperclip"></i> Файлҳо</label>
+                    <input type="file" id="requestFiles" multiple accept="image/*,video/*,application/pdf,.doc,.docx">
+                    <div class="progress-container" id="progressContainer" style="display: none;">
+                        <div class="progress-bar"><div class="progress-fill" id="uploadProgressFill"></div></div>
+                        <div id="progressText" style="font-size: 11px; margin-top: 4px; color: var(--text-secondary);"></div>
+                    </div>
+                    <div class="file-list" id="fileListPreview"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeRequestModal()">Бекор</button>
+                <button type="submit" class="btn-primary">Сабт</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: View Request Details -->
+<div id="viewRequestModal" class="modal">
+    <div class="modal-content view-modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-info-circle"></i> Маълумоти заявка</h2>
+            <span class="close" onclick="closeViewModal()">&times;</span>
+        </div>
+        <div id="viewRequestContent" class="modal-body"></div>
+        <div class="modal-footer">
+            <button class="btn-secondary" style="background:var(--accent-red);color:white;border-color:var(--accent-red);" id="viewDeleteBtn" onclick="deleteRequestFromView()"><i class="fas fa-trash-alt"></i> Нест кардан</button>
+            <button class="btn-secondary" onclick="closeViewModal()">Пӯшидан</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+// ==================== ГЛОБАЛӢ ====================
+let currentBoardId = null;
+let allBoards = [];
+let allColumns = [];
+let allRequests = [];
+let currentUserId = {{ session.user_id }};
+let currentUserRole = "{{ session.role }}";
+let draggedColumnId = null;
+let draggedCard = null;
+let filterTimeout = null;
+let currentFiles = [];
+
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadBoards();
+    loadUsersForSelect();
+    // Пас аз бор шудан, филтрҳои қаблиро аз cookie бор кун
+    setTimeout(loadFilters, 500);
+});
+
+async function loadUsersForSelect() {
+    const res = await fetch('/api/users/list');
+    const users = await res.json();
+    const select = document.getElementById('executorId');
+    select.innerHTML = '<option value="">Интихоб...</option>' + 
+        users.map(u => `<option value="${u.id}">${escapeHtml(u.full_name)} (${u.category})</option>`).join('');
+    
+    const filter = document.getElementById('authorFilter');
+    filter.innerHTML = '<option value="all">Ҳама</option>' + 
+        users.map(u => `<option value="${u.id}">${escapeHtml(u.full_name)}</option>`).join('');
+}
+
+// ==================== BOARD API ====================
+async function loadBoards() {
+    try {
+        const res = await fetch('/api/requests-boards');
+        allBoards = await res.json();
+        if (allBoards.length && !currentBoardId) currentBoardId = allBoards[0].id;
+        if (currentBoardId) await loadBoardData();
+        renderBoardsPanel();
+        updateBoardUI();
+        if (!allBoards.length) document.getElementById('kanbanBoard').innerHTML = '<div class="loading">📋 Доска нест. Доскаи аввалро эҷод кунед!</div>';
+    } catch(e) { console.error(e); }
+}
+
+async function loadBoardData() {
+    if (!currentBoardId) return;
+    await Promise.all([loadColumns(), loadRequests()]);
+    renderKanbanBoard();
+    updateTotalCount();
+}
+
+async function loadColumns() {
+    try {
+        const res = await fetch(`/api/requests-boards/${currentBoardId}/columns`);
+        allColumns = await res.json();
+        updateColumnFilter();
+    } catch(e) { allColumns = []; }
+}
+
+async function loadRequests() {
+    try {
+        const res = await fetch(`/api/requests-board/${currentBoardId}/requests`);
+        allRequests = await res.json();
+        document.getElementById('totalRequestsCount').textContent = allRequests.length;
+    } catch(e) { allRequests = []; }
+}
+
+function renderBoardsPanel() {
+    const panel = document.getElementById('boardsBottomPanel');
+    panel.innerHTML = allBoards.map(b => `
+        <div class="board-tab ${currentBoardId === b.id ? 'active' : ''}" onclick="switchBoard(${b.id})">
+            <div class="board-tab-icon" style="background:${b.color || '#3b82f6'}"><i class="fas fa-chalkboard"></i></div>
+            <span class="board-tab-name">${escapeHtml(b.title)}</span>
+        </div>
+    `).join('') + `<div class="board-tab create-board-tab" onclick="showAddBoardModal()"><i class="fas fa-plus"></i><span>Доскаи нав</span></div>`;
+}
+
+function updateBoardUI() {
+    const b = allBoards.find(b => b.id === currentBoardId);
+    if(b) {
+        document.getElementById('currentBoardTitle').innerHTML = `<i class="fas fa-chalkboard"></i> ${escapeHtml(b.title)}`;
+        document.getElementById('boardContainer').style.background = b.color || '#f8fafc';
+    }
+}
+
+async function switchBoard(id) {
+    currentBoardId = id;
+    await loadBoardData();
+    renderBoardsPanel();
+    updateBoardUI();
+    resetFilters();
+    showToast('Доска иваз шуд');
+}
+
+function updateColumnFilter() {
+    const sel = document.getElementById('columnFilter');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="all">Ҳама колонкаҳо</option>' + allColumns.map(c => `<option value="${c.id}">${escapeHtml(c.title)}</option>`).join('');
+    if (prev) sel.value = prev;
+}
+
+// ==================== RENDER ====================
+function renderKanbanBoard() {
+    const container = document.getElementById('kanbanBoard');
+    if (!allColumns.length) {
+        container.innerHTML = `<div class="add-column-btn" onclick="showAddColumnModal()"><i class="fas fa-plus"></i> Колонкаи аввалро эҷод кунед</div>`;
+        return;
+    }
+    
+    const sortedCols = [...allColumns].sort((a,b) => a.order_index - b.order_index);
+    
+    container.innerHTML = sortedCols.map(col => `
+        <div class="kanban-column" data-column-id="${col.id}" data-column-title="${escapeHtml(col.title)}"
+             ondragover="handleColumnDragOver(event)" ondrop="handleColumnDrop(event)" ondragleave="handleDragLeave(event)">
+            <div class="column-header" style="border-bottom-color: ${col.color || '#3b82f6'}">
+                <div class="column-left">
+                    <i class="fas fa-grip-vertical column-drag-handle" draggable="true" 
+                       ondragstart="handleColumnDragStart(event, ${col.id})" ondragend="handleDragEnd(event)"></i>
+                    <div class="column-title"><h3>${escapeHtml(col.title)}</h3></div>
+                    <span class="column-badge">${allRequests.filter(r => r.column_id === col.id).length}</span>
+                </div>
+                <div class="column-actions">
+                    <i class="fas fa-edit" onclick="event.stopPropagation(); editColumn(${col.id})" title="Таҳрир"></i>
+                    <i class="fas fa-trash-alt" onclick="event.stopPropagation(); deleteColumn(${col.id})" title="Нест кардан" style="color: var(--accent-red);"></i>
+                </div>
+            </div>
+            <div class="cards-container" data-column-id="${col.id}"
+                 ondragover="handleCardDragOver(event)" ondrop="handleCardDrop(event)">
+                ${renderCards(col.id)}
+            </div>
+        </div>
+    `).join('');
+    
+    container.innerHTML += `<div class="add-column-btn" onclick="showAddColumnModal()"><i class="fas fa-plus"></i> Колонкаи нав</div>`;
+}
+
+function renderCards(columnId) {
+    const requests = allRequests.filter(r => r.column_id === columnId).sort((a,b) => (a.order_index || 0) - (b.order_index || 0));
+    if (!requests.length) return '<div style="padding:16px; text-align:center; color:var(--text-tertiary); font-size:11px;"><i class="fas fa-inbox"></i> Заявка нест</div>';
+    
+    return requests.map(req => {
+        const files = req.files ? JSON.parse(req.files) : [];
+        return `
+        <div class="request-card" data-request-id="${req.id}" data-order="${req.order_index || 0}" draggable="true"
+             ondragstart="handleCardDragStart(event)" ondragend="handleCardDragEnd(event)"
+             ondblclick="viewRequest(${req.id})">
+            <div class="card-header">
+                <span class="card-name">${escapeHtml(req.client_name)}</span>
+                <div class="card-actions">
+                    <button onclick="event.stopPropagation(); editRequest(${req.id})"><i class="fas fa-pen"></i></button>
+                    <button onclick="event.stopPropagation(); deleteRequest(${req.id})"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+            <div class="card-phone"><i class="fas fa-phone-alt"></i> ${escapeHtml(req.phone)}</div>
+            <div class="card-info">
+                <span class="info-tag"><i class="fas fa-building"></i> ${escapeHtml(req.property_type)}</span>
+                <span class="info-tag"><i class="fas fa-ruler-combined"></i> ${req.area} м²</span>
+                <span class="info-tag"><i class="fas fa-door-open"></i> ${req.rooms} хона</span>
+            </div>
+            <div class="card-info">
+                <span class="info-tag"><i class="fas fa-credit-card"></i> ${formatPrice(req.total_price)} C</span>
+                <span class="info-tag"><i class="fas fa-chart-line"></i> ${formatPrice(req.price_per_m2)} C/м²</span>
+            </div>
+            ${files.length ? `
+            <div class="files-preview">
+                ${files.slice(0, 3).map(f => `
+                    <div class="file-thumb" onclick="event.stopPropagation(); window.open('${f.path}', '_blank')">
+                        ${f.type === 'image' ? `<img src="${f.path}" alt="preview">` : f.type === 'video' ? `<video src="${f.path}"></video>` : `<i class="fas fa-file-alt"></i>`}
+                    </div>
+                `).join('')}
+                ${files.length > 3 ? `<div class="file-thumb" onclick="event.stopPropagation(); viewRequest(${req.id})"><i class="fas fa-plus"></i> ${files.length-3}</div>` : ''}
+            </div>
+            ` : ''}
+            <div class="card-meta">
+                <span><i class="far fa-calendar-alt"></i> ${new Date(req.created_date).toLocaleDateString()}</span>
+                <span><i class="fas fa-user-check"></i> ${escapeHtml(req.executor_name || '—')}</span>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ==================== DRAG & DROP ====================
+function handleColumnDragStart(e, columnId) {
+    draggedColumnId = columnId;
+    e.dataTransfer.setData('text/plain', columnId);
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleColumnDragOver(e) {
+    e.preventDefault();
+    const col = e.target.closest('.kanban-column');
+    if (col && draggedColumnId && col.dataset.columnId != draggedColumnId) {
+        col.classList.add('drag-over');
+    }
+}
+
+function handleDragLeave(e) {
+    const col = e.target.closest('.kanban-column');
+    if (col) col.classList.remove('drag-over');
+}
+
+async function handleColumnDrop(e) {
+    e.preventDefault();
+    const targetCol = e.target.closest('.kanban-column');
+    if (!targetCol || !draggedColumnId) return;
+    
+    const targetId = parseInt(targetCol.dataset.columnId);
+    const sourceId = draggedColumnId;
+    if (sourceId === targetId) return;
+    
+    await fetch(`/api/requests-columns/${sourceId}/order`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ target_id: targetId })
+    });
+    
+    draggedColumnId = null;
+    await loadColumns();
+    renderKanbanBoard();
+    showToast('Колонка ҷой иваз шуд');
+}
+
+function handleCardDragStart(e) {
+    e.stopPropagation();
+    const card = e.target.closest('.request-card');
+    if (!card) return;
+    draggedCard = card;
+    card.classList.add('dragging');
+    e.dataTransfer.setData('text/plain', card.dataset.requestId);
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleCardDragEnd(e) {
+    document.querySelectorAll('.request-card').forEach(c => c.classList.remove('dragging', 'drag-over-top', 'drag-over-bottom'));
+    draggedCard = null;
+}
+
+function handleCardDragOver(e) {
+    e.preventDefault();
+    const card = e.target.closest('.request-card');
+    const container = e.target.closest('.cards-container');
+    
+    if (card && draggedCard && card !== draggedCard) {
+        const rect = card.getBoundingClientRect();
+        const mouseY = e.clientY;
+        const isTop = mouseY < rect.top + rect.height / 2;
+        
+        card.classList.remove('drag-over-top', 'drag-over-bottom');
+        if (isTop) {
+            card.classList.add('drag-over-top');
+        } else {
+            card.classList.add('drag-over-bottom');
+        }
+    } else if (container && !card) {
+        container.classList.add('drag-over');
+    }
+}
+
+async function handleCardDrop(e) {
+    e.preventDefault();
+    const targetCard = e.target.closest('.request-card');
+    const targetContainer = e.target.closest('.cards-container');
+    const leadId = parseInt(e.dataTransfer.getData('text/plain'));
+    
+    document.querySelectorAll('.request-card').forEach(c => c.classList.remove('drag-over-top', 'drag-over-bottom'));
+    document.querySelectorAll('.cards-container').forEach(c => c.classList.remove('drag-over'));
+    
+    let newColumnId = parseInt(targetContainer?.dataset.columnId);
+    let newOrder = null;
+    
+    if (targetCard) {
+        newColumnId = parseInt(targetCard.closest('.cards-container').dataset.columnId);
+        const rect = targetCard.getBoundingClientRect();
+        const mouseY = e.clientY;
+        const isTop = mouseY < rect.top + rect.height / 2;
+        const currentOrder = parseInt(targetCard.dataset.order);
+        newOrder = isTop ? currentOrder : currentOrder + 1;
+    }
+    
+    await fetch('/api/requests-move', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ request_id: leadId, column_id: newColumnId, order_index: newOrder })
+    });
+    
+    await loadRequests();
+    renderKanbanBoard();
+    updateTotalCount();
+    showToast('Заявка ҷой иваз шуд');
+}
+
+// ==================== FILTERS ====================
+function getFloorNumber(floorValue) {
+    // Аз "16/18" фақат "16"-ро мехонем (пеш аз /)
+    if (floorValue === null || floorValue === undefined) return null;
+    const str = String(floorValue);
+    const parts = str.split('/');
+    return parseInt(parts[0]);
+}
+
+function filterRequests() {
+    if (filterTimeout) clearTimeout(filterTimeout);
+    filterTimeout = setTimeout(() => {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const type = document.getElementById('typeFilter').value;
+        const author = document.getElementById('authorFilter').value;
+        const dateFilter = document.getElementById('dateFilter').value;
+        const columnFilter = document.getElementById('columnFilter').value;
+        const priceMin = parseFloat(document.getElementById('priceMinFilter').value) || null;
+        const priceMax = parseFloat(document.getElementById('priceMaxFilter').value) || null;
+        const priceM2Min = parseFloat(document.getElementById('priceM2MinFilter').value) || null;
+        const priceM2Max = parseFloat(document.getElementById('priceM2MaxFilter').value) || null;
+        const areaMin = parseFloat(document.getElementById('areaMinFilter').value) || null;
+        const areaMax = parseFloat(document.getElementById('areaMaxFilter').value) || null;
+        const floorMin = parseInt(document.getElementById('floorMinFilter').value) || null;
+        const floorMax = parseInt(document.getElementById('floorMaxFilter').value) || null;
+        
+        let visibleCards = 0;
+        document.querySelectorAll('.request-card').forEach(card => {
+            const reqId = parseInt(card.dataset.requestId);
+            const req = allRequests.find(r => r.id === reqId);
+            if (!req) return;
+            
+            let show = true;
+            if (search && !req.client_name.toLowerCase().includes(search) && !req.phone.includes(search) && !req.address.toLowerCase().includes(search)) show = false;
+            if (type !== 'all' && req.property_type !== type) show = false;
+            if (author !== 'all' && req.author_id != author) show = false;
+            if (columnFilter !== 'all' && req.column_id != columnFilter) show = false;
+            
+            // Нархи умумӣ
+            if (priceMin !== null && req.total_price < priceMin) show = false;
+            if (priceMax !== null && req.total_price > priceMax) show = false;
+            // Нархи м²
+            if (priceM2Min !== null && req.price_per_m2 < priceM2Min) show = false;
+            if (priceM2Max !== null && req.price_per_m2 > priceM2Max) show = false;
+            // Масоҳат
+            if (areaMin !== null && req.area < areaMin) show = false;
+            if (areaMax !== null && req.area > areaMax) show = false;
+            // Ошёна - танҳо рақами пеш аз / хонем
+            if (floorMin !== null || floorMax !== null) {
+                const floorNum = getFloorNumber(req.floor);
+                if (floorMin !== null && floorNum < floorMin) show = false;
+                if (floorMax !== null && floorNum > floorMax) show = false;
+            }
+            
+            if (dateFilter === 'today') {
+                const today = new Date().toDateString();
+                if (new Date(req.created_date).toDateString() !== today) show = false;
+            } else if (dateFilter === 'week') {
+                const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+                if (new Date(req.created_date) < weekAgo) show = false;
+            } else if (dateFilter === 'month') {
+                const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
+                if (new Date(req.created_date) < monthAgo) show = false;
+            }
+            
+            card.style.display = show ? 'block' : 'none';
+            if (show) visibleCards++;
+        });
+        document.getElementById('totalRequestsCount').textContent = visibleCards;
+    }, 200);
+}
+
+function saveFilters() {
+    const filters = {
+        search: document.getElementById('searchInput').value,
+        type: document.getElementById('typeFilter').value,
+        author: document.getElementById('authorFilter').value,
+        date: document.getElementById('dateFilter').value,
+        column: document.getElementById('columnFilter').value,
+        priceMin: document.getElementById('priceMinFilter').value,
+        priceMax: document.getElementById('priceMaxFilter').value,
+        priceM2Min: document.getElementById('priceM2MinFilter').value,
+        priceM2Max: document.getElementById('priceM2MaxFilter').value,
+        areaMin: document.getElementById('areaMinFilter').value,
+        areaMax: document.getElementById('areaMaxFilter').value,
+        floorMin: document.getElementById('floorMinFilter').value,
+        floorMax: document.getElementById('floorMaxFilter').value,
+    };
+    document.cookie = `kanban_filters=${encodeURIComponent(JSON.stringify(filters))};path=/;max-age=86400`;
+}
+
+function loadFilters() {
+    try {
+        const match = document.cookie.match(/kanban_filters=([^;]+)/);
+        if (!match) return;
+        const filters = JSON.parse(decodeURIComponent(match[1]));
+        if (filters.search) document.getElementById('searchInput').value = filters.search;
+        if (filters.type) document.getElementById('typeFilter').value = filters.type;
+        if (filters.author) document.getElementById('authorFilter').value = filters.author;
+        if (filters.date) document.getElementById('dateFilter').value = filters.date;
+        if (filters.column) document.getElementById('columnFilter').value = filters.column;
+        if (filters.priceMin) document.getElementById('priceMinFilter').value = filters.priceMin;
+        if (filters.priceMax) document.getElementById('priceMaxFilter').value = filters.priceMax;
+        if (filters.priceM2Min) document.getElementById('priceM2MinFilter').value = filters.priceM2Min;
+        if (filters.priceM2Max) document.getElementById('priceM2MaxFilter').value = filters.priceM2Max;
+        if (filters.areaMin) document.getElementById('areaMinFilter').value = filters.areaMin;
+        if (filters.areaMax) document.getElementById('areaMaxFilter').value = filters.areaMax;
+        if (filters.floorMin) document.getElementById('floorMinFilter').value = filters.floorMin;
+        if (filters.floorMax) document.getElementById('floorMaxFilter').value = filters.floorMax;
+        filterRequests();
+    } catch(e) {}
+}
+
+function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('typeFilter').value = 'all';
+    document.getElementById('authorFilter').value = 'all';
+    document.getElementById('dateFilter').value = 'all';
+    document.getElementById('columnFilter').value = 'all';
+    document.getElementById('priceMinFilter').value = '';
+    document.getElementById('priceMaxFilter').value = '';
+    document.getElementById('priceM2MinFilter').value = '';
+    document.getElementById('priceM2MaxFilter').value = '';
+    document.getElementById('areaMinFilter').value = '';
+    document.getElementById('areaMaxFilter').value = '';
+    document.getElementById('floorMinFilter').value = '';
+    document.getElementById('floorMaxFilter').value = '';
+    document.cookie = 'kanban_filters=;path=/;max-age=0';
+    filterRequests();
+    showToast('Филтрҳо тоза шуданд');
+}
+
+// ==================== CRUD ====================
+async function createColumn(title, color) {
+    const res = await fetch('/api/requests-columns', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ board_id: currentBoardId, title, color })
+    });
+    if (res.ok) { await loadColumns(); renderKanbanBoard(); showToast('Колонка эҷод шуд'); }
+}
+
+async function updateColumn(id, title, color) {
+    const res = await fetch(`/api/requests-columns/${id}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ title, color })
+    });
+    if (res.ok) { await loadColumns(); renderKanbanBoard(); showToast('Колонка нав шуд'); }
+}
+
+async function deleteColumn(id) {
+    if (!confirm('Колонкаро нест кардан? Ҳама заявкаҳо нест мешаванд!')) return;
+    const res = await fetch(`/api/requests-columns/${id}`, { method: 'DELETE' });
+    if (res.ok) { await loadColumns(); await loadRequests(); renderKanbanBoard(); updateTotalCount(); showToast('Колонка нест шуд'); }
+}
+
+async function createRequest(data) {
+    const res = await fetch('/api/requests-new', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    return res.ok;
+}
+
+async function updateRequestData(id, data) {
+    const res = await fetch(`/api/requests-update/${id}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    return res.ok;
+}
+
+async function deleteRequest(id) {
+    if (!confirm('Заявкаро нест кардан?')) return;
+    const res = await fetch(`/api/requests-delete/${id}`, { method: 'DELETE' });
+    if (res.ok) { await loadRequests(); renderKanbanBoard(); updateTotalCount(); showToast('Заявка нест шуд'); }
+}
+
+// ==================== UPLOAD ====================
+async function uploadFilesWithProgress(files, onProgress) {
+    const uploaded = [];
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const xhr = new XMLHttpRequest();
+        const promise = new Promise((resolve, reject) => {
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable && onProgress) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    onProgress(i, files.length, file.name, percent);
+                }
+            });
+            xhr.onload = () => {
+                if (xhr.status === 200) { resolve(JSON.parse(xhr.responseText)); }
+                else { reject(); }
+            };
+            xhr.onerror = reject;
+            xhr.open('POST', '/api/upload-request-file');
+            xhr.send(formData);
+        });
+        const result = await promise;
+        uploaded.push(result);
+    }
+    return uploaded;
+}
+
+// ==================== VIEW REQUEST WITH COPY ====================
+let currentViewRequestId = null;
+let currentViewFiles = [];
+
+async function viewRequest(id) {
+    const req = allRequests.find(r => r.id === id);
+    if (!req) return;
+    
+    currentViewRequestId = id;
+    currentViewFiles = req.files ? JSON.parse(req.files) : [];
+    
+    renderViewModal(req, currentViewFiles);
+    openModal('viewRequestModal');
+}
+
+function renderViewModal(req, files) {
+    const copyData = `${req.property_type}\n📍 Суроға: ${req.address}\n📏 Масоҳат: ${req.area} м²\n🚪 Ҳуҷраҳо: ${req.rooms}\n🪟 Тирезаҳо: ${req.windows}\n🏢 Ошёна: ${req.floor}/${req.total_floors}\n💰 Нархи умумӣ: ${formatPrice(req.total_price)} C\n📈 Нархи як м²: ${formatPrice(req.price_per_m2)} C/м²`;
+    
+    const content = `
+        <div class="info-grid">
+            <div class="info-item"><div class="info-label"><i class="fas fa-building"></i> Намуд</div><div class="info-value">${escapeHtml(req.property_type)}</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-map-marker-alt"></i> Суроға</div><div class="info-value">${escapeHtml(req.address)}</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-ruler-combined"></i> Масоҳат</div><div class="info-value">${req.area} м²</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-door-open"></i> Ҳуҷраҳо</div><div class="info-value">${req.rooms}</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-window-maximize"></i> Тирезаҳо</div><div class="info-value">${req.windows}</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-layer-group"></i> Ошёна</div><div class="info-value">${req.floor} / ${req.total_floors}</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-credit-card"></i> Нархи умумӣ</div><div class="info-value">${formatPrice(req.total_price)} C</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-chart-line"></i> Нархи як м²</div><div class="info-value">${formatPrice(req.price_per_m2)} C/м²</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-phone-alt"></i> Телефон</div><div class="info-value">${escapeHtml(req.phone)}</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-user"></i> Мизоҷ</div><div class="info-value">${escapeHtml(req.client_name)}</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-user-check"></i> Иҷрокунанда</div><div class="info-value">${escapeHtml(req.executor_name)}</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-user"></i> Муаллиф</div><div class="info-value">${escapeHtml(req.author_name)}</div></div>
+            <div class="info-item full-width"><div class="info-label"><i class="fas fa-calendar"></i> Сана</div><div class="info-value">${new Date(req.created_date).toLocaleString()}</div></div>
+            ${req.comment ? `<div class="info-item full-width"><div class="info-label"><i class="fas fa-comment"></i> Шарҳ</div><div class="info-value">${escapeHtml(req.comment)}</div></div>` : ''}
+        </div>
+        <div style="margin-bottom: 16px; display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="copy-btn" id="copyMainDataBtn"><i class="fas fa-copy"></i> Нусхабардории маълумотҳо</button>
+            <button class="copy-btn" id="sendWhatsappBtn" style="background:var(--accent-green);"><i class="fab fa-whatsapp"></i> Ватсап</button>
+        </div>
+        ${files.length ? `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <strong><i class="fas fa-paperclip"></i> Файлҳо (${files.length})</strong>
+            <small style="color:var(--text-tertiary);font-size:10px;"><i class="fas fa-info-circle"></i> Аксҳоро кашед то ҷой иваз кунед</small>
+        </div>
+        <div class="media-gallery" id="mediaGallery">
+            ${files.map((f, idx) => `
+                <div class="media-item" draggable="true" data-idx="${idx}" data-file-path="${f.path}" data-file-name="${escapeHtml(f.name || '')}" style="cursor:grab;">
+                    <div style="position:absolute;top:2px;left:4px;font-size:9px;background:rgba(0,0,0,0.6);color:white;border-radius:3px;padding:1px 4px;">${idx+1}</div>
+                    ${f.type === 'image' ? `<img src="${f.path}" alt="${escapeHtml(f.name || '')}" onclick="window.open('${f.path}', '_blank')">` : 
+                      f.type === 'video' ? `<video src="${f.path}" onclick="window.open('${f.path}', '_blank')"></video>` : 
+                      `<div class="file-icon" onclick="window.open('${f.path}', '_blank')"><i class="fas fa-file-alt"></i></div>`}
+                    <button class="copy-media-btn" title="Нусхабардорӣ"><i class="fas fa-copy"></i></button>
+                </div>
+            `).join('')}
+        </div>
+        ` : ''}
+    `;
+    document.getElementById('viewRequestContent').innerHTML = content;
+    
+    // Кнопкаи нусхабардории маълумотҳо
+    document.getElementById('copyMainDataBtn').addEventListener('click', () => {
+        navigator.clipboard.writeText(copyData).then(() => {
+            showToast('Маълумотҳо нусхабардорӣ шуданд');
+        }).catch(() => {
+            // fallback
+            const ta = document.createElement('textarea');
+            ta.value = copyData;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+            showToast('Маълумотҳо нусхабардорӣ шуданд');
+        });
+    });
+    
+    // Кнопкаи WhatsApp - ҳама аксҳоро равон кун
+    document.getElementById('sendWhatsappBtn').addEventListener('click', async () => {
+        const imageFiles = currentViewFiles.filter(f => f.type === 'image');
+        const waText = encodeURIComponent(copyData);
+        
+        if (imageFiles.length > 0) {
+            // Матнро нусхабардорӣ кун
+            try {
+                await navigator.clipboard.writeText(copyData);
+            } catch(e) {
+                const ta = document.createElement('textarea');
+                ta.value = copyData;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+            }
+            showToast('Матн нусхабардорӣ шуд! WhatsApp кушода мешавад...', 2000);
+            // WhatsApp-ро бо матн кушо - аксҳоро баъд дастӣ замима кун
+            setTimeout(() => {
+                window.open(`https://wa.me/?text=${waText}`, '_blank');
+                // Ҳар акси дигарро ба tab нав кушо барои осон замима кардан
+                imageFiles.forEach((f, i) => {
+                    setTimeout(() => {
+                        window.open(f.path, '_blank');
+                    }, 300 * (i + 1));
+                });
+            }, 600);
+        } else {
+            window.open(`https://wa.me/?text=${waText}`, '_blank');
+        }
+    });
+    
+    // Нусхабардории аксҳо - ислоҳшуда
+    document.querySelectorAll('.copy-media-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const item = btn.closest('.media-item');
+            const filePath = item.dataset.filePath;
+            const fileName = item.dataset.fileName;
+            try {
+                const response = await fetch(filePath);
+                const blob = await response.blob();
+                // Фақат PNG-ро ClipboardItem қабул мекунад - convert мекунем
+                if (blob.type === 'image/png') {
+                    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                } else if (blob.type.startsWith('image/')) {
+                    // JPEG ва дигарро ба PNG табдил медиҳем
+                    const imgBitmap = await createImageBitmap(blob);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = imgBitmap.width;
+                    canvas.height = imgBitmap.height;
+                    canvas.getContext('2d').drawImage(imgBitmap, 0, 0);
+                    const pngBlob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+                    await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+                } else {
+                    showToast('Ин намуди файл нусхабардорӣ намешавад', 2000);
+                    return;
+                }
+                showToast(`Акс нусхабардорӣ шуд`);
+            } catch (err) {
+                console.error(err);
+                showToast('Хатогӣ: браузер иҷозат надод. Аксро дастӣ нусхабардорӣ кунед.', 3000);
+                window.open(filePath, '_blank');
+            }
+        });
+    });
+    
+    // Drag & Drop барои иваз кардани ҷойи аксҳо
+    initMediaGalleryDnD(req);
+}
+
+function initMediaGalleryDnD(req) {
+    const gallery = document.getElementById('mediaGallery');
+    if (!gallery) return;
+    
+    let dragSrcIdx = null;
+    
+    gallery.querySelectorAll('.media-item').forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+            dragSrcIdx = parseInt(item.dataset.idx);
+            item.style.opacity = '0.5';
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        item.addEventListener('dragend', () => { item.style.opacity = '1'; });
+        item.addEventListener('dragover', (e) => { e.preventDefault(); item.style.border = '2px dashed var(--accent-blue)'; });
+        item.addEventListener('dragleave', () => { item.style.border = ''; });
+        item.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            item.style.border = '';
+            const targetIdx = parseInt(item.dataset.idx);
+            if (dragSrcIdx === null || dragSrcIdx === targetIdx) return;
+            
+            // Ҷойҳоро иваз кун
+            const newFiles = [...currentViewFiles];
+            const [moved] = newFiles.splice(dragSrcIdx, 1);
+            newFiles.splice(targetIdx, 0, moved);
+            currentViewFiles = newFiles;
+            
+            // Серверга сабт кун
+            await updateRequestData(req.id, { files: currentViewFiles });
+            // Дар allRequests нав кун
+            const idx = allRequests.findIndex(r => r.id === req.id);
+            if (idx !== -1) allRequests[idx].files = JSON.stringify(currentViewFiles);
+            
+            renderViewModal(req, currentViewFiles);
+            showToast('Ҷойи аксҳо иваз шуд');
+        });
+    });
+}
+
+async function deleteRequestFromView() {
+    if (!currentViewRequestId) return;
+    if (!confirm('Заявкаро нест кардан?')) return;
+    const res = await fetch(`/api/requests-delete/${currentViewRequestId}`, { method: 'DELETE' });
+    if (res.ok) {
+        closeViewModal();
+        await loadRequests();
+        renderKanbanBoard();
+        updateTotalCount();
+        showToast('Заявка нест шуд');
+    }
+}
+
+// ==================== MODALS ====================
+function showAddBoardModal() {
+    document.getElementById('boardModalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Доскаи нав';
+    document.getElementById('boardId').value = '';
+    document.getElementById('boardForm').reset();
+    openModal('boardModal');
+}
+
+function showSelectBoardModal() {
+    loadBoardsList();
+    openModal('selectBoardModal');
+}
+
+
+function showBoardSettings() {
+    const b = allBoards.find(b => b.id === currentBoardId);
+    if(b) {
+        document.getElementById('settingsBoardTitle').value = b.title;
+        document.getElementById('settingsBoardColor').value = b.color || '#f8fafc';
+        document.getElementById('settingsBoardIsPublic').value = b.is_public;
+        openModal('boardSettingsModal');
+    }
+}
+
+function showAddColumnModal() {
+    if(!currentBoardId) { alert('Аввал доскаро интихоб кунед'); return; }
+    document.getElementById('columnModalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Колонкаи нав';
+    document.getElementById('columnId').value = '';
+    document.getElementById('columnForm').reset();
+    document.getElementById('columnColor').value = '#3b82f6';
+    openModal('columnModal');
+}
+
+function showAddRequestModal() {
+    if(!currentBoardId) { alert('Аввал доскаро интихоб кунед'); return; }
+    if(!allColumns.length) { alert('Аввал колонка эҷод кунед'); return; }
+    document.getElementById('requestModalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Заявкаи нав';
+    document.getElementById('requestId').value = '';
+    document.getElementById('requestForm').reset();
+    document.getElementById('fileListPreview').innerHTML = '';
+    currentFiles = [];
+    openModal('requestModal');
+}
+
+function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+function closeBoardModal() { closeModal('boardModal'); }
+function closeSelectBoardModal() { closeModal('selectBoardModal'); }
+function closeBoardSettingsModal() { closeModal('boardSettingsModal'); }
+function closeColumnModal() { closeModal('columnModal'); }
+function closeRequestModal() { closeModal('requestModal'); }
+function closeViewModal() { closeModal('viewRequestModal'); }
+
+function editColumn(id) {
+    const col = allColumns.find(c => c.id === id);
+    if (col) {
+        document.getElementById('columnModalTitle').innerHTML = '<i class="fas fa-edit"></i> Таҳрири колонка';
+        document.getElementById('columnId').value = col.id;
+        document.getElementById('columnTitle').value = col.title;
+        document.getElementById('columnColor').value = col.color || '#3b82f6';
+        openModal('columnModal');
+    }
+}
+
+function editRequest(id) {
+    const req = allRequests.find(r => r.id === id);
+    if (!req) return;
+    
+    document.getElementById('requestModalTitle').innerHTML = '<i class="fas fa-edit"></i> Таҳрири заявка';
+    document.getElementById('requestId').value = req.id;
+    document.getElementById('propertyType').value = req.property_type;
+    document.getElementById('address').value = req.address;
+    document.getElementById('area').value = req.area;
+    document.getElementById('rooms').value = req.rooms;
+    document.getElementById('windows').value = req.windows;
+    document.getElementById('floor').value = req.floor;
+    document.getElementById('totalFloors').value = req.total_floors;
+    document.getElementById('totalPrice').value = req.total_price;
+    document.getElementById('pricePerM2').value = req.price_per_m2;
+    document.getElementById('phone').value = req.phone;
+    document.getElementById('clientName').value = req.client_name;
+    document.getElementById('executorId').value = req.executor_id;
+    document.getElementById('comment').value = req.comment || '';
+    
+    currentFiles = [];
+    
+    if (req.files) {
+        const files = JSON.parse(req.files);
+        files.forEach(f => currentFiles.push(f));
+    }
+    
+    // Аксҳои мавҷударо нишон диҳад бо имкони ҳазф
+    const preview = document.getElementById('fileListPreview');
+    preview.innerHTML = '';
+    currentFiles.forEach((f, idx) => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.style.cssText = 'position:relative; display:inline-flex; flex-direction:column; align-items:center; gap:4px;';
+        if (f.type === 'image') {
+            item.innerHTML = `
+                <img src="${f.path}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border-color);">
+                <button type="button" onclick="removeExistingFile(${idx})" style="background:var(--accent-red);color:white;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:10px;"><i class="fas fa-trash"></i> Ҳазф</button>
+            `;
+        } else {
+            item.innerHTML = `
+                <i class="fas fa-file-alt" style="font-size:24px;color:var(--accent-blue);"></i>
+                <span style="font-size:10px;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(f.name || 'файл')}</span>
+                <button type="button" onclick="removeExistingFile(${idx})" style="background:var(--accent-red);color:white;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:10px;"><i class="fas fa-trash"></i> Ҳазф</button>
+            `;
+        }
+        preview.appendChild(item);
+    });
+    
+    openModal('requestModal');
+}
+
+function removeExistingFile(idx) {
+    currentFiles.splice(idx, 1);
+    // Re-render preview
+    const req = { files: JSON.stringify(currentFiles) };
+    const preview = document.getElementById('fileListPreview');
+    preview.innerHTML = '';
+    currentFiles.forEach((f, i) => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.style.cssText = 'position:relative; display:inline-flex; flex-direction:column; align-items:center; gap:4px;';
+        if (f.type === 'image') {
+            item.innerHTML = `
+                <img src="${f.path}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border-color);">
+                <button type="button" onclick="removeExistingFile(${i})" style="background:var(--accent-red);color:white;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:10px;"><i class="fas fa-trash"></i> Ҳазф</button>
+            `;
+        } else {
+            item.innerHTML = `
+                <i class="fas fa-file-alt" style="font-size:24px;color:var(--accent-blue);"></i>
+                <span style="font-size:10px;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(f.name || 'файл')}</span>
+                <button type="button" onclick="removeExistingFile(${i})" style="background:var(--accent-red);color:white;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:10px;"><i class="fas fa-trash"></i> Ҳазф</button>
+            `;
+        }
+        preview.appendChild(item);
+    });
+}
+
+function loadBoardsList() {
+    const c = document.getElementById('boardsListContainer');
+    c.innerHTML = allBoards.map(b => `
+        <div class="board-tab ${currentBoardId === b.id ? 'active' : ''}" style="margin-bottom:8px; display:flex; align-items:center; gap:10px; padding:10px; border-radius:10px; cursor:pointer;" onclick="selectBoard(${b.id})">
+            <div class="board-tab-icon" style="background:${b.color || '#3b82f6'}"><i class="fas fa-chalkboard"></i></div>
+            <span style="flex:1">${escapeHtml(b.title)}</span>
+        </div>
+    `).join('');
+    if(!c.innerHTML) c.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-tertiary);">Доска нест</div>';
+}
+
+function filterBoardsList() {
+    const s = document.getElementById('boardSearch').value.toLowerCase();
+    document.querySelectorAll('#boardsListContainer .board-tab').forEach(tab => {
+        tab.style.display = tab.innerText.toLowerCase().includes(s) ? 'flex' : 'none';
+    });
+}
+
+function selectBoard(id) { switchBoard(id); closeSelectBoardModal(); }
+
+async function updateCurrentBoard() {
+    await updateBoard(currentBoardId, { 
+        title: document.getElementById('settingsBoardTitle').value, 
+        color: document.getElementById('settingsBoardColor').value, 
+        is_public: parseInt(document.getElementById('settingsBoardIsPublic').value) 
+    });
+    closeBoardSettingsModal();
+}
+
+async function deleteCurrentBoard() {
+    if(!confirm('Доскаро нест кардан? Ҳама заявкаҳо нест мешаванд!')) return;
+    await fetch(`/api/requests-boards/${currentBoardId}`, { method: 'DELETE' });
+    await loadBoards();
+    if(allBoards.length) currentBoardId = allBoards[0].id;
+    else currentBoardId = null;
+    await loadBoardData();
+    renderBoardsPanel();
+    updateBoardUI();
+    closeBoardSettingsModal();
+    showToast('Доска нест шуд');
+}
+
+async function updateBoard(id, data) {
+    await fetch(`/api/requests-boards/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+    await loadBoards();
+    if(currentBoardId === id) updateBoardUI();
+    showToast('Доска нав шуд');
+}
+
+function exportBoard() {
+    const dateFilter = document.getElementById('dateFilter').value;
+    const typeFilter = document.getElementById('typeFilter').value;
+    const authorFilter = document.getElementById('authorFilter').value;
+    window.location.href = `/api/requests-export/excel?board_id=${currentBoardId}&date_filter=${dateFilter}&type_filter=${typeFilter}&author_filter=${authorFilter}`;
+}
+
+function updateTotalCount() { document.getElementById('totalRequestsCount').textContent = allRequests.length; }
+
+function showToast(msg, duration = 2500) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.innerHTML = `<i class="fas fa-check-circle" style="margin-right:6px;"></i>${msg}`;
+    document.body.appendChild(t);
+    setTimeout(() => { 
+        t.style.animation = 'slideOutRight 0.3s ease'; 
+        setTimeout(() => t.remove(), 300); 
+    }, duration);
+}
+
+function formatPrice(price) { return new Intl.NumberFormat('ru-RU').format(Math.round(price)); }
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]);
+}
+
+// ==================== FORMS ====================
+document.getElementById('boardForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('boardId').value;
+    const data = { title: document.getElementById('boardTitle').value, color: document.getElementById('boardColor').value, is_public: parseInt(document.getElementById('boardIsPublic').value) };
+    if(id) { await updateBoard(parseInt(id), data); }
+    else {
+        await fetch('/api/requests-boards', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+        await loadBoards();
+        if(allBoards.length) { currentBoardId = allBoards[0].id; await loadBoardData(); renderBoardsPanel(); updateBoardUI(); }
+    }
+    closeBoardModal();
+    showToast(id ? 'Доска нав шуд' : 'Доска эҷод шуд');
+});
+
+document.getElementById('columnForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('columnId').value;
+    if(id) { await updateColumn(parseInt(id), document.getElementById('columnTitle').value, document.getElementById('columnColor').value); }
+    else { await createColumn(document.getElementById('columnTitle').value, document.getElementById('columnColor').value); }
+    closeColumnModal();
+});
+
+document.getElementById('requestForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const requestId = document.getElementById('requestId').value;
+    const filesInput = document.getElementById('requestFiles');
+    let uploadedFiles = [...currentFiles];
+    
+    if (filesInput.files.length) {
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('uploadProgressFill');
+        const progressText = document.getElementById('progressText');
+        progressContainer.style.display = 'block';
+        
+        uploadedFiles = await uploadFilesWithProgress(Array.from(filesInput.files), (index, total, name, percent) => {
+            progressFill.style.width = `${percent}%`;
+            progressText.textContent = `Боргузорӣ: ${name} - ${percent}% (${index+1}/${total})`;
+        });
+        
+        progressContainer.style.display = 'none';
+        progressFill.style.width = '0%';
+        progressText.textContent = '';
+    }
+    
+    const firstColumnId = allColumns.length ? allColumns[0].id : null;
+    if (!firstColumnId && !requestId) { alert('Аввал колонка эҷод кунед'); return; }
+    
+    // Барои заявкаи нав, order_index = 0 (дар болотарин ҷой)
+    const data = {
+        property_type: document.getElementById('propertyType').value,
+        address: document.getElementById('address').value,
+        area: parseFloat(document.getElementById('area').value),
+        rooms: parseInt(document.getElementById('rooms').value),
+        windows: parseInt(document.getElementById('windows').value),
+        floor: parseInt(document.getElementById('floor').value),
+        total_floors: parseInt(document.getElementById('totalFloors').value),
+        total_price: parseFloat(document.getElementById('totalPrice').value),
+        price_per_m2: parseFloat(document.getElementById('pricePerM2').value),
+        phone: document.getElementById('phone').value,
+        client_name: document.getElementById('clientName').value,
+        executor_id: parseInt(document.getElementById('executorId').value),
+        comment: document.getElementById('comment').value,
+        files: uploadedFiles,
+        column_id: firstColumnId,
+        board_id: currentBoardId,
+        order_index: requestId ? undefined : 0
+    };
+    
+    let success;
+    if (requestId) { success = await updateRequestData(parseInt(requestId), data); }
+    else { success = await createRequest(data); }
+    
+    if (success) {
+        closeRequestModal();
+        await loadRequests();
+        renderKanbanBoard();
+        updateTotalCount();
+        showToast(requestId ? 'Заявка нав шуд' : 'Заявка эҷод шуд');
+    } else { showToast('Хатогӣ ҳангоми сабт', 3000); }
+});
+
+// Color palette click
+document.querySelectorAll('.color-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+        document.getElementById('columnColor').value = opt.dataset.color;
+    });
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeBoardModal(); closeSelectBoardModal(); closeBoardSettingsModal();
+        closeColumnModal(); closeRequestModal(); closeViewModal();
+    }
+});
+</script>
+{% endblock %}
