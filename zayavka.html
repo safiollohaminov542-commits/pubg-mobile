@@ -1,0 +1,2634 @@
+{% extends "base.html" %}
+{% block title %}Заявкаҳо - Kanban{% endblock %}
+ 
+{% block content %}
+<style>
+    /* ==================== ROOT VARIABLES ==================== */
+    :root {
+        --bg-primary: #f8fafc;
+        --bg-secondary: #ffffff;
+        --bg-tertiary: #f1f5f9;
+        --bg-card: #ffffff;
+        --bg-column: #f8fafc;
+        --border-color: #e2e8f0;
+        --border-light: #f1f5f9;
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --text-tertiary: #94a3b8;
+        --accent-blue: #3b82f6;
+        --accent-purple: #8b5cf6;
+        --accent-green: #10b981;
+        --accent-red: #ef4444;
+        --accent-orange: #f59e0b;
+        --accent-indigo: #6366f1;
+        --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+        --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+        --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.04);
+        --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        --transition-slow: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        --radius-sm: 6px;
+        --radius-md: 10px;
+        --radius-lg: 14px;
+        --radius-xl: 20px;
+        --radius-2xl: 24px;
+        --glass-bg: rgba(255,255,255,0.85);
+        --glass-border: rgba(255,255,255,0.3);
+    }
+ 
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+ 
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+ 
+    .kanban-wrapper {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        background: var(--bg-primary);
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    }
+ 
+ 
+    /* ==================== HEADER ==================== */
+    .kanban-header {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--border-color);
+        padding: 12px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        z-index: 20;
+        position: sticky;
+        top: 0;
+    }
+ 
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+ 
+    .board-icon {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, var(--accent-blue), var(--accent-indigo));
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: white;
+        cursor: pointer;
+        transition: var(--transition);
+        box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+    }
+ 
+    .board-icon:hover {
+        transform: scale(1.05) rotate(-2deg);
+        box-shadow: 0 6px 16px rgba(59,130,246,0.4);
+    }
+ 
+    .board-title-box {
+        display: flex;
+        flex-direction: column;
+    }
+ 
+    .board-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-primary);
+        letter-spacing: -0.3px;
+    }
+ 
+    .board-stats {
+        font-size: 12px;
+        color: var(--text-tertiary);
+        margin-top: 2px;
+    }
+ 
+    .board-stats span {
+        color: var(--accent-blue);
+        font-weight: 600;
+    }
+ 
+    .header-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+ 
+ 
+    /* ==================== FILTERS ==================== */
+    .filters-bar {
+        background: var(--glass-bg);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        padding: 12px 24px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        z-index: 15;
+        position: sticky;
+        top: 60px;
+    }
+ 
+    .filters-left {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        flex: 1;
+    }
+ 
+    .filters-right {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+    }
+ 
+    .filter-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--bg-secondary);
+        padding: 8px 14px;
+        border-radius: var(--radius-md);
+        border: 1.5px solid var(--border-color);
+        transition: var(--transition);
+        box-shadow: var(--shadow-xs);
+        height: 40px;
+    }
+ 
+    .filter-group:hover {
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
+    }
+ 
+    .filter-group:focus-within {
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+    }
+ 
+    .filter-group.primary {
+        border-color: rgba(59,130,246,0.25);
+        background: rgba(59, 130, 246, 0.03);
+    }
+ 
+    .filter-group.primary:hover,
+    .filter-group.primary:focus-within {
+        border-color: var(--accent-blue);
+        background: rgba(59, 130, 246, 0.06);
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+ 
+    .filter-group i {
+        color: var(--accent-blue);
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+ 
+    .filter-group input, .filter-group select {
+        background: transparent;
+        border: none;
+        color: var(--text-primary);
+        padding: 2px 0;
+        font-size: 13px;
+        font-weight: 500;
+        outline: none;
+        min-width: 0;
+    }
+ 
+    .filter-group input::placeholder {
+        color: var(--text-tertiary);
+        font-weight: 400;
+    }
+ 
+    .filter-group select {
+        cursor: pointer;
+        -webkit-appearance: none;
+        appearance: none;
+        padding-right: 4px;
+    }
+ 
+    .filter-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--accent-blue);
+        white-space: nowrap;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+ 
+    .filter-separator {
+        color: var(--text-tertiary);
+        font-size: 12px;
+        padding: 0 2px;
+    }
+ 
+ 
+    /* ==================== KANBAN MAIN ==================== */
+    .kanban-main {
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+    }
+ 
+    .board-scroll {
+        height: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 20px 24px;
+        transition: background 0.3s ease;
+        scroll-behavior: smooth;
+    }
+ 
+    .kanban-board {
+        display: flex;
+        gap: 18px;
+        align-items: flex-start;
+        height: 100%;
+        min-width: min-content;
+    }
+ 
+    /* ==================== COLUMN ==================== */
+    .kanban-column {
+        min-width: 320px;
+        width: 320px;
+        max-height: calc(100vh - 180px);
+        background: var(--bg-column);
+        border-radius: var(--radius-xl);
+        display: flex;
+        flex-direction: column;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-color);
+        flex-shrink: 0;
+        transition: var(--transition);
+    }
+ 
+    .kanban-column:hover {
+        box-shadow: var(--shadow-md);
+    }
+ 
+    .kanban-column.drag-over {
+        border-color: var(--accent-blue);
+        background: rgba(59,130,246,0.03);
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+ 
+    .column-header {
+        padding: 14px 16px;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid var(--border-color);
+        flex-shrink: 0;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+ 
+    .column-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+ 
+    .column-drag-handle {
+        cursor: grab;
+        color: var(--text-tertiary);
+        font-size: 12px;
+        padding: 4px;
+        border-radius: 4px;
+        transition: var(--transition-fast);
+    }
+ 
+    .column-drag-handle:hover {
+        color: var(--accent-blue);
+        background: rgba(59,130,246,0.08);
+    }
+ 
+    .column-drag-handle:active {
+        cursor: grabbing;
+    }
+ 
+    .column-title h3 {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-primary);
+        letter-spacing: -0.2px;
+    }
+ 
+    .column-badge {
+        background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(99,102,241,0.1));
+        border-radius: 20px;
+        padding: 3px 10px;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--accent-blue);
+        min-width: 24px;
+        text-align: center;
+    }
+ 
+    .column-actions {
+        display: flex;
+        gap: 6px;
+        opacity: 0;
+        transition: var(--transition-fast);
+    }
+ 
+    .kanban-column:hover .column-actions {
+        opacity: 1;
+    }
+ 
+    .column-actions i {
+        cursor: pointer;
+        color: var(--text-tertiary);
+        transition: var(--transition-fast);
+        font-size: 12px;
+        padding: 5px;
+        border-radius: var(--radius-sm);
+    }
+ 
+    .column-actions i:hover {
+        color: var(--accent-blue);
+        background: rgba(59,130,246,0.08);
+    }
+ 
+ 
+    /* Cards Container */
+    .cards-container {
+        padding: 12px;
+        flex: 1;
+        overflow-y: auto;
+        min-height: 80px;
+    }
+ 
+    .cards-container::-webkit-scrollbar {
+        width: 4px;
+    }
+ 
+    .cards-container::-webkit-scrollbar-track {
+        background: transparent;
+    }
+ 
+    .cards-container::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+ 
+    .cards-container::-webkit-scrollbar-thumb:hover {
+        background: var(--accent-blue);
+    }
+ 
+    /* ==================== REQUEST CARD ==================== */
+    .request-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        padding: 14px;
+        margin-bottom: 10px;
+        cursor: grab;
+        transition: var(--transition);
+        border: 1.5px solid var(--border-color);
+        position: relative;
+        box-shadow: var(--shadow-xs);
+    }
+ 
+    .request-card:active {
+        cursor: grabbing;
+    }
+ 
+    .request-card.dragging {
+        opacity: 0.4;
+        transform: rotate(2deg);
+    }
+ 
+    .request-card.drag-over-top {
+        border-top: 3px solid var(--accent-blue);
+        margin-top: -2px;
+    }
+ 
+    .request-card.drag-over-bottom {
+        border-bottom: 3px solid var(--accent-blue);
+        margin-bottom: -2px;
+    }
+ 
+    .request-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(59,130,246,0.4);
+        box-shadow: var(--shadow-md);
+    }
+ 
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+ 
+    .card-name {
+        font-weight: 700;
+        font-size: 13px;
+        color: var(--accent-blue);
+        background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(99,102,241,0.08));
+        padding: 4px 10px;
+        border-radius: 20px;
+        letter-spacing: -0.1px;
+    }
+ 
+    .card-actions {
+        display: flex;
+        gap: 4px;
+        opacity: 0;
+        transition: var(--transition-fast);
+    }
+ 
+    .request-card:hover .card-actions {
+        opacity: 1;
+    }
+ 
+    .card-actions button {
+        background: var(--bg-tertiary);
+        border: none;
+        border-radius: var(--radius-sm);
+        padding: 5px 8px;
+        cursor: pointer;
+        font-size: 11px;
+        color: var(--text-secondary);
+        transition: var(--transition-fast);
+    }
+ 
+    .card-actions button:hover {
+        background: var(--accent-blue);
+        color: white;
+        transform: scale(1.05);
+    }
+ 
+    .card-phone {
+        font-size: 12px;
+        color: var(--accent-blue);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 8px;
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-weight: 500;
+    }
+ 
+    .card-info {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 8px;
+    }
+ 
+    .info-tag {
+        background: var(--bg-tertiary);
+        padding: 3px 8px;
+        border-radius: 16px;
+        font-size: 10px;
+        color: var(--text-secondary);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-weight: 500;
+        transition: var(--transition-fast);
+    }
+ 
+    .info-tag:hover {
+        background: rgba(59,130,246,0.08);
+        color: var(--accent-blue);
+    }
+ 
+ 
+    .files-preview {
+        display: flex;
+        gap: 6px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+    }
+ 
+    .file-thumb {
+        width: 36px;
+        height: 36px;
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        overflow: hidden;
+        border: 1.5px solid var(--border-color);
+        transition: var(--transition-fast);
+    }
+ 
+    .file-thumb:hover {
+        border-color: var(--accent-blue);
+        transform: scale(1.08);
+        box-shadow: var(--shadow-sm);
+    }
+ 
+    .file-thumb img, .file-thumb video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+ 
+    .card-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 10px;
+        color: var(--text-tertiary);
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--border-light);
+    }
+ 
+    /* Add Column Button */
+    .add-column-btn {
+        min-width: 320px;
+        width: 320px;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-xl);
+        padding: 16px;
+        text-align: center;
+        cursor: pointer;
+        transition: var(--transition);
+        border: 2px dashed var(--border-color);
+        color: var(--text-tertiary);
+        flex-shrink: 0;
+        font-size: 13px;
+        font-weight: 500;
+    }
+ 
+    .add-column-btn:hover {
+        background: rgba(59,130,246,0.03);
+        border-color: var(--accent-blue);
+        color: var(--accent-blue);
+        transform: translateY(-2px);
+    }
+ 
+    /* ==================== BOTTOM BOARDS PANEL ==================== */
+    .bottom-panel {
+        background: var(--glass-bg);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-top: 1px solid var(--border-color);
+        padding: 8px 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        overflow-x: auto;
+        z-index: 10;
+    }
+ 
+    .bottom-panel::-webkit-scrollbar {
+        height: 3px;
+    }
+ 
+    .board-tab {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 16px;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: var(--transition);
+        background: var(--bg-tertiary);
+        flex-shrink: 0;
+        font-size: 12px;
+        font-weight: 500;
+        border: 1px solid transparent;
+    }
+ 
+    .board-tab.active {
+        background: linear-gradient(135deg, var(--accent-blue), var(--accent-indigo));
+        color: white;
+        box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+        border-color: transparent;
+    }
+ 
+    .board-tab.active span {
+        color: white;
+    }
+ 
+    .board-tab.active i {
+        color: white;
+    }
+ 
+    .board-tab:hover:not(.active) {
+        transform: translateY(-1px);
+        border-color: var(--accent-blue);
+        background: rgba(59,130,246,0.05);
+    }
+ 
+    .board-tab-icon {
+        width: 26px;
+        height: 26px;
+        background: rgba(0, 0, 0, 0.08);
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+    }
+ 
+    .board-tab-name {
+        font-size: 12px;
+        color: var(--text-primary);
+    }
+ 
+    .create-board-tab {
+        border: 1.5px dashed var(--border-color);
+        background: transparent;
+    }
+ 
+ 
+    /* ==================== MODALS ==================== */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.5);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        align-items: center;
+        justify-content: center;
+    }
+ 
+    .modal.active {
+        display: flex;
+    }
+ 
+    body.modal-open {
+        overflow: hidden;
+    }
+ 
+    .modal-content {
+        background: var(--bg-secondary);
+        border-radius: var(--radius-2xl);
+        width: 92%;
+        max-width: 700px;
+        max-height: 88vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: var(--shadow-xl), 0 0 60px rgba(0,0,0,0.1);
+        border: 1px solid var(--border-color);
+        animation: modalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        position: relative;
+    }
+ 
+    .modal-large .modal-content,
+    .modal-large.modal .modal-content {
+        max-width: 850px;
+    }
+ 
+    @keyframes modalIn {
+        from { opacity: 0; transform: scale(0.95) translateY(10px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+ 
+    @keyframes modalOut {
+        from { opacity: 1; transform: scale(1) translateY(0); }
+        to { opacity: 0; transform: scale(0.95) translateY(10px); }
+    }
+ 
+    .modal-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+        flex-shrink: 0;
+    }
+ 
+    .modal-header h2 {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        letter-spacing: -0.3px;
+    }
+ 
+    .modal-header .close {
+        font-size: 24px;
+        cursor: pointer;
+        color: var(--text-tertiary);
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-sm);
+        transition: var(--transition-fast);
+    }
+ 
+    .modal-header .close:hover {
+        color: var(--accent-red);
+        background: rgba(239,68,68,0.08);
+    }
+ 
+    .modal-body {
+        padding: 24px;
+        overflow-y: auto;
+        flex: 1;
+    }
+ 
+    .modal-body::-webkit-scrollbar {
+        width: 5px;
+    }
+ 
+    .modal-body::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+ 
+    .modal-footer {
+        padding: 16px 24px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        flex-shrink: 0;
+        background: var(--bg-secondary);
+        border-radius: 0 0 var(--radius-2xl) var(--radius-2xl);
+    }
+ 
+ 
+    /* Forms */
+    .form-group {
+        margin-bottom: 18px;
+    }
+ 
+    .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+    }
+ 
+    .form-group label i {
+        color: var(--accent-blue);
+        margin-right: 4px;
+    }
+ 
+    .form-group input, .form-group select, .form-group textarea {
+        width: 100%;
+        padding: 10px 14px;
+        background: var(--bg-tertiary);
+        border: 1.5px solid var(--border-color);
+        border-radius: var(--radius-md);
+        color: var(--text-primary);
+        font-size: 14px;
+        font-weight: 500;
+        transition: var(--transition);
+    }
+ 
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+        background: var(--bg-secondary);
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+ 
+    .form-group input::placeholder {
+        color: var(--text-tertiary);
+        font-weight: 400;
+    }
+ 
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
+ 
+    /* Progress Bar */
+    .progress-container {
+        margin-top: 10px;
+    }
+ 
+    .progress-bar {
+        width: 100%;
+        height: 5px;
+        background: var(--bg-tertiary);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+ 
+    .progress-fill {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent-blue), var(--accent-indigo));
+        transition: width 0.3s ease;
+        border-radius: 4px;
+    }
+ 
+    .file-list {
+        margin-top: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+ 
+    .file-item {
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-md);
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        border: 1px solid var(--border-color);
+        transition: var(--transition-fast);
+    }
+ 
+    .file-item:hover {
+        border-color: var(--accent-blue);
+        background: rgba(59,130,246,0.03);
+    }
+ 
+    .file-item button {
+        background: none;
+        border: none;
+        color: var(--accent-red);
+        cursor: pointer;
+        padding: 2px;
+        border-radius: 4px;
+        transition: var(--transition-fast);
+    }
+ 
+    .file-item button:hover {
+        background: rgba(239,68,68,0.08);
+    }
+ 
+    /* View Modal */
+    .view-modal-content {
+        max-width: 600px;
+    }
+ 
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+ 
+    .info-item {
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-md);
+        padding: 14px;
+        transition: var(--transition-fast);
+        border: 1px solid transparent;
+    }
+ 
+    .info-item:hover {
+        border-color: var(--accent-blue);
+        background: rgba(59,130,246,0.03);
+    }
+ 
+    .info-label {
+        font-size: 10px;
+        color: var(--text-tertiary);
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+ 
+    .info-value {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+ 
+    .full-width {
+        grid-column: span 2;
+    }
+ 
+ 
+    .copy-btn {
+        background: var(--accent-blue);
+        border: none;
+        color: white;
+        padding: 6px 12px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 4px;
+        transition: var(--transition-fast);
+    }
+ 
+    .copy-btn:hover {
+        background: var(--accent-indigo);
+        transform: translateY(-1px);
+    }
+ 
+    .media-gallery {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 12px;
+    }
+ 
+    .media-item {
+        text-align: center;
+        position: relative;
+        user-select: none;
+        transition: var(--transition-fast);
+    }
+ 
+    .media-item:hover {
+        transform: scale(1.03);
+    }
+ 
+    .media-item img, .media-item video {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border-radius: var(--radius-md);
+        background: var(--bg-tertiary);
+        border: 1.5px solid var(--border-color);
+        cursor: pointer;
+        transition: var(--transition-fast);
+    }
+ 
+    .media-item img:hover, .media-item video:hover {
+        border-color: var(--accent-blue);
+        box-shadow: var(--shadow-md);
+    }
+ 
+    .media-item .file-icon {
+        width: 100px;
+        height: 100px;
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        border: 1.5px solid var(--border-color);
+        transition: var(--transition-fast);
+    }
+ 
+    .media-item .file-icon:hover {
+        border-color: var(--accent-blue);
+    }
+ 
+    .copy-media-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(15, 23, 42, 0.7);
+        border: none;
+        color: white;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        transition: var(--transition-fast);
+        opacity: 0;
+    }
+ 
+    .media-item:hover .copy-media-btn {
+        opacity: 1;
+    }
+ 
+    .copy-media-btn:hover {
+        background: var(--accent-blue);
+        transform: scale(1.1);
+    }
+ 
+    /* Buttons */
+    .btn-primary {
+        background: linear-gradient(135deg, var(--accent-blue), var(--accent-indigo));
+        border: none;
+        padding: 9px 18px;
+        border-radius: var(--radius-md);
+        color: white;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+        transition: var(--transition);
+        box-shadow: 0 2px 8px rgba(59,130,246,0.25);
+    }
+ 
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59,130,246,0.35);
+    }
+ 
+    .btn-primary:active {
+        transform: translateY(0);
+    }
+ 
+    .btn-secondary {
+        background: var(--bg-secondary);
+        border: 1.5px solid var(--border-color);
+        padding: 9px 18px;
+        border-radius: var(--radius-md);
+        color: var(--text-primary);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition-fast);
+    }
+ 
+    .btn-secondary:hover {
+        background: var(--bg-tertiary);
+        border-color: var(--text-tertiary);
+    }
+ 
+    .btn-sm {
+        padding: 7px 14px;
+        font-size: 12px;
+    }
+ 
+    /* Color Picker */
+    .color-palette {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+ 
+    .color-option {
+        width: 32px;
+        height: 32px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        border: 2.5px solid transparent;
+        transition: var(--transition-fast);
+    }
+ 
+    .color-option:hover {
+        transform: scale(1.15);
+        box-shadow: var(--shadow-md);
+    }
+ 
+    .color-option.selected {
+        border-color: var(--text-primary);
+        transform: scale(1.1);
+    }
+ 
+ 
+    /* Toast */
+    .toast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: var(--bg-secondary);
+        border-left: 4px solid var(--accent-green);
+        border-radius: var(--radius-md);
+        padding: 12px 20px;
+        color: var(--text-primary);
+        z-index: 2000;
+        box-shadow: var(--shadow-lg);
+        animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        font-size: 13px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+ 
+    @keyframes slideInRight {
+        from { transform: translateX(120%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+ 
+    @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(120%); opacity: 0; }
+    }
+ 
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-tertiary);
+        font-size: 14px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+ 
+    .empty-column-msg {
+        padding: 20px;
+        text-align: center;
+        color: var(--text-tertiary);
+        font-size: 12px;
+    }
+ 
+    /* ==================== RESPONSIVE ==================== */
+    @media (max-width: 1024px) {
+        .filters-bar {
+            padding: 10px 16px;
+        }
+        .filter-group {
+            padding: 6px 10px;
+            height: 36px;
+        }
+    }
+ 
+    @media (max-width: 768px) {
+        .kanban-header {
+            padding: 10px 16px;
+        }
+        .kanban-column {
+            min-width: 280px;
+            width: 280px;
+        }
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+        .full-width {
+            grid-column: span 1;
+        }
+        .modal-content {
+            width: 96%;
+            max-height: 92vh;
+            border-radius: var(--radius-xl);
+        }
+        .modal-header {
+            padding: 16px 18px;
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        }
+        .modal-body {
+            padding: 18px;
+        }
+        .modal-footer {
+            padding: 14px 18px;
+            border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+        }
+        .filters-bar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .filters-left, .filters-right {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+    }
+ 
+    @media (max-width: 480px) {
+        .kanban-column {
+            min-width: 260px;
+            width: 260px;
+        }
+        .header-actions {
+            width: 100%;
+            justify-content: flex-end;
+        }
+    }
+</style>
+ 
+ 
+<div class="kanban-wrapper">
+    <!-- Header -->
+    <div class="kanban-header">
+        <div class="header-left">
+            <div class="board-icon" onclick="showSelectBoardModal()">
+                <i class="fas fa-columns"></i>
+            </div>
+            <div class="board-title-box">
+                <div class="board-title" id="currentBoardTitle">Заявкаҳо</div>
+                <div class="board-stats">
+                    <i class="fas fa-chalkboard-teacher"></i> Ҳамагӣ: <span id="totalRequestsCount">0</span>
+                </div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-secondary btn-sm" onclick="showBoardSettings()" title="Танзимот">
+                <i class="fas fa-sliders-h"></i>
+            </button>
+            <button class="btn-secondary btn-sm" onclick="showAddColumnModal()" title="Колонкаи нав">
+                <i class="fas fa-plus"></i> Колонка
+            </button>
+            <button class="btn-primary btn-sm" onclick="showAddRequestModal()" title="Заявкаи нав">
+                <i class="fas fa-plus-circle"></i> Заявка
+            </button>
+            <button class="btn-secondary btn-sm" onclick="exportBoard()" title="Экспорт">
+                <i class="fas fa-file-excel"></i>
+            </button>
+        </div>
+    </div>
+ 
+    <!-- Filters - Grid Layout -->
+    <div class="filters-bar" style="background:linear-gradient(135deg, #1565C0, #1E88E5, #42A5F5); backdrop-filter:blur(20px); padding:14px 20px; display:flex; flex-direction:column; gap:10px; border-bottom:none; box-shadow:0 4px 20px rgba(21,101,192,0.3);">
+        <!-- Сатри 1: Ҷустуҷӯ + Намуд + Сана + Зброс -->
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:10px; align-items:center;">
+            <input type="text" id="searchInput" placeholder="🔍 Ҷустуҷӯ..." oninput="filterRequests(); saveFilters()" style="width:100%; padding:10px 14px; border-radius:8px; border:none; font-size:14px; background:rgba(255,255,255,0.95); color:#333; box-shadow:0 2px 8px rgba(0,0,0,0.08); backdrop-filter:blur(4px);">
+            <select id="typeFilter" onchange="filterRequests(); saveFilters()" style="width:100%; padding:10px 14px; border-radius:8px; border:2.5px solid #FFC107; font-size:14px; background:rgba(255,255,255,0.95); color:#333; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <option value="all">🏠 НАМУД</option>
+                <option value="новостройка">🏗️ Навсохт</option>
+                <option value="коробка">📦 Блок</option>
+                <option value="котлован">🕳️ Котлован</option>
+                <option value="Коммерческая">🏢 Тиҷоратӣ</option>
+            </select>
+            <select id="dateFilter" onchange="filterRequests(); saveFilters()" style="width:100%; padding:10px 14px; border-radius:8px; border:none; font-size:13px; background:rgba(255,255,255,0.95); color:#333; font-weight:500; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <option value="all">📅 Ҳама вақт</option>
+                <option value="today">Имрӯз</option>
+                <option value="week">Ин ҳафта</option>
+                <option value="month">Ин моҳ</option>
+            </select>
+            <button onclick="resetFilters()" title="Тоза кардани филтрҳо" style="padding:10px 14px; border-radius:8px; border:none; background:rgba(255,255,255,0.2); color:white; font-size:16px; cursor:pointer; transition:all 0.2s; backdrop-filter:blur(4px); display:flex; align-items:center; gap:6px; font-weight:600; white-space:nowrap;">
+                <i class="fas fa-undo-alt"></i> <span style="font-size:12px;">Зброс</span>
+            </button>
+        </div>
+        <!-- Сатри 2: Нарх аз, Масоҳат аз, Ошёна аз, Нарх м2 аз, Муаллиф -->
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr; gap:8px;">
+            <input type="number" id="priceMinFilter" placeholder="💰 Нарх аз" oninput="filterRequests(); saveFilters()" style="width:100%; padding:9px 12px; border-radius:8px; border:none; font-size:13px; background:rgba(255,255,255,0.92); color:#333; box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">
+            <input type="number" id="areaMinFilter" placeholder="📐 Масоҳат аз" oninput="filterRequests(); saveFilters()" style="width:100%; padding:9px 12px; border-radius:8px; border:none; font-size:13px; background:rgba(255,255,255,0.92); color:#333; box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">
+            <input type="number" id="floorMinFilter" placeholder="🏢 Ошёна аз" oninput="filterRequests(); saveFilters()" style="width:100%; padding:9px 12px; border-radius:8px; border:none; font-size:13px; background:rgba(255,255,255,0.92); color:#333; box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">
+            <input type="number" id="priceM2MinFilter" placeholder="📊 Нарх/м² аз" oninput="filterRequests(); saveFilters()" style="width:100%; padding:9px 12px; border-radius:8px; border:none; font-size:13px; background:rgba(255,255,255,0.92); color:#333; box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">
+            <select id="authorFilter" onchange="filterRequests(); saveFilters()" style="width:100%; padding:9px 12px; border-radius:8px; border:none; font-size:13px; background:rgba(255,255,255,0.92); color:#333; box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">
+                <option value="all">👤 ҲАМА</option>
+            </select>
+        </div>
+        <!-- Сатри 3: Нарх то, Масоҳат то, Ошёна то, Нарх м2 то, Колонка -->
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr; gap:8px;">
+            <input type="number" id="priceMaxFilter" placeholder="💰 Нарх то" oninput="filterRequests(); saveFilters()" style="width:100%; padding:9px 12px; border-radius:8px; border:none; font-size:13px; background:rgba(255,255,255,0.92); color:#333; box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">
+            <input type="number" id="areaMaxFilter" placeholder="📐 Масоҳат то" oninput="filterRequests(); saveFilters()" style="width:100%; padding:9px 12px; border-radius:8px; border:none; font-size:13px; background:rgba(255,255,255,0.92); color:#333; box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">
+            <input type="number" id="floorMaxFilter" placeholder="🏢 Ошёна то" oninput="filterRequests(); saveFilters()" style="width:100%; padding:9px 12px; border-radius:8px; border:none; font-size:13px; background:rgba(255,255,255,0.92); color:#333; box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">
+            <input type="number" id="priceM2MaxFilter" placeholder="📊 Нарх/м² то" oninput="filterRequests(); saveFilters()" style="width:100%; padding:9px 12px; border-radius:8px; border:none; font-size:13px; background:rgba(255,255,255,0.92); color:#333; box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">
+            <select id="columnFilter" onchange="filterRequests(); saveFilters()" style="width:100%; padding:9px 12px; border-radius:8px; border:none; font-size:13px; background:rgba(255,255,255,0.92); color:#333; box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">
+                <option value="all">📋 ҲАМА</option>
+            </select>
+        </div>
+    </div>
+ 
+ 
+    <!-- Kanban Board -->
+    <div class="kanban-main">
+        <div class="board-scroll" id="boardContainer">
+            <div class="kanban-board" id="kanbanBoard">
+                <div class="loading"><i class="fas fa-spinner fa-pulse"></i><span>Боргирӣ...</span></div>
+            </div>
+        </div>
+    </div>
+ 
+    <!-- Bottom Boards Panel -->
+    <div class="bottom-panel" id="boardsBottomPanel"></div>
+</div>
+ 
+<!-- Modal: Board -->
+<div id="boardModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="boardModalTitle"><i class="fas fa-plus-circle"></i> Доскаи нав</h2>
+            <span class="close" onclick="closeBoardModal()">&times;</span>
+        </div>
+        <form id="boardForm">
+            <input type="hidden" id="boardId">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Номи доска</label>
+                    <input type="text" id="boardTitle" required placeholder="Номи доскаро ворид кунед">
+                </div>
+                <div class="form-group">
+                    <label>Ранг</label>
+                    <input type="color" id="boardColor" value="#f8fafc">
+                </div>
+                <div class="form-group">
+                    <label>Намуд</label>
+                    <select id="boardIsPublic">
+                        <option value="1">Ҳамагӣ</option>
+                        <option value="0">Шахсӣ</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeBoardModal()">Бекор</button>
+                <button type="submit" class="btn-primary">Сабт</button>
+            </div>
+        </form>
+    </div>
+</div>
+ 
+<!-- Modal: Select Board -->
+<div id="selectBoardModal" class="modal">
+    <div class="modal-content" style="max-width: 420px;">
+        <div class="modal-header">
+            <h2><i class="fas fa-columns"></i> Интихоби доска</h2>
+            <span class="close" onclick="closeSelectBoardModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <input type="text" id="boardSearch" placeholder="Ҷустуҷӯ..." onkeyup="filterBoardsList()">
+            </div>
+            <div id="boardsListContainer" style="max-height: 350px; overflow-y: auto;"></div>
+            <button class="btn-primary" style="width: 100%; margin-top: 15px;" onclick="showAddBoardModal()">
+                <i class="fas fa-plus"></i> Доскаи нав
+            </button>
+        </div>
+    </div>
+</div>
+ 
+ 
+<!-- Modal: Board Settings -->
+<div id="boardSettingsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-cog"></i> Танзимот</h2>
+            <span class="close" onclick="closeBoardSettingsModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Ном</label>
+                <input type="text" id="settingsBoardTitle">
+            </div>
+            <div class="form-group">
+                <label>Ранг</label>
+                <input type="color" id="settingsBoardColor">
+            </div>
+            <div class="form-group">
+                <label>Намуд</label>
+                <select id="settingsBoardIsPublic">
+                    <option value="1">Ҳамагӣ</option>
+                    <option value="0">Шахсӣ</option>
+                </select>
+            </div>
+            <hr style="margin: 15px 0; border: none; border-top: 1px solid var(--border-color);">
+            <button class="btn-secondary" onclick="deleteCurrentBoard()" style="width: 100%; color: var(--accent-red); border-color: var(--accent-red);">
+                <i class="fas fa-trash-alt"></i> Нест кардан
+            </button>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeBoardSettingsModal()">Бекор</button>
+            <button class="btn-primary" onclick="updateCurrentBoard()">Сабт</button>
+        </div>
+    </div>
+</div>
+ 
+<!-- Modal: Column -->
+<div id="columnModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="columnModalTitle"><i class="fas fa-plus-circle"></i> Колонкаи нав</h2>
+            <span class="close" onclick="closeColumnModal()">&times;</span>
+        </div>
+        <form id="columnForm">
+            <input type="hidden" id="columnId">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Номи колонка</label>
+                    <input type="text" id="columnTitle" required placeholder="Номи колонкаро ворид кунед">
+                </div>
+                <div class="form-group">
+                    <label>Ранг</label>
+                    <div class="color-palette">
+                        <div class="color-option" style="background:#3b82f6;" data-color="#3b82f6"></div>
+                        <div class="color-option" style="background:#22c55e;" data-color="#22c55e"></div>
+                        <div class="color-option" style="background:#f59e0b;" data-color="#f59e0b"></div>
+                        <div class="color-option" style="background:#ef4444;" data-color="#ef4444"></div>
+                        <div class="color-option" style="background:#8b5cf6;" data-color="#8b5cf6"></div>
+                        <div class="color-option" style="background:#ec4899;" data-color="#ec4899"></div>
+                        <div class="color-option" style="background:#06b6d4;" data-color="#06b6d4"></div>
+                        <div class="color-option" style="background:#6366f1;" data-color="#6366f1"></div>
+                    </div>
+                    <input type="color" id="columnColor" value="#3b82f6" style="width: 100%; margin-top: 8px; height: 36px;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeColumnModal()">Бекор</button>
+                <button type="submit" class="btn-primary">Сабт</button>
+            </div>
+        </form>
+    </div>
+</div>
+ 
+ 
+<!-- Modal: Request Add/Edit -->
+<div id="requestModal" class="modal modal-large">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="requestModalTitle"><i class="fas fa-plus-circle"></i> Заявкаи нав</h2>
+            <span class="close" onclick="closeRequestModal()">&times;</span>
+        </div>
+        <form id="requestForm">
+            <input type="hidden" id="requestId">
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-building"></i> Намуд *</label>
+                        <select id="propertyType" required>
+                            <option value="новостройка">Навсохт</option>
+                            <option value="коробка">Блок</option>
+                            <option value="котлован">Котлован</option>
+                            <option value="Коммерческая">Тиҷоратӣ</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-map-marker-alt"></i> Суроға *</label>
+                        <input type="text" id="address" required placeholder="Суроғаро ворид кунед">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-ruler-combined"></i> Масоҳат (м²) *</label>
+                        <input type="number" id="area" step="0.01" required placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-door-open"></i> Ҳуҷраҳо *</label>
+                        <input type="number" id="rooms" required placeholder="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-window-maximize"></i> Тирезаҳо *</label>
+                        <input type="number" id="windows" required placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-layer-group"></i> Ошёна *</label>
+                        <input type="number" id="floor" required placeholder="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-building"></i> Ошёнаҳои бино *</label>
+                        <input type="number" id="totalFloors" required placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-credit-card"></i> Нархи умумӣ (C) *</label>
+                        <input type="number" id="totalPrice" required placeholder="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-chart-line"></i> Нархи як м² (C) *</label>
+                        <input type="number" id="pricePerM2" required placeholder="Автоматӣ ҳисоб мешавад">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-phone-alt"></i> Телефон *</label>
+                        <input type="tel" id="phone" required placeholder="+992 XXX XX XX XX">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-user"></i> Номи мизоҷ *</label>
+                        <input type="text" id="clientName" required placeholder="Ном ва насаб">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-user-check"></i> Иҷрокунанда *</label>
+                        <select id="executorId" required></select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-comment"></i> Шарҳ</label>
+                    <textarea id="comment" rows="3" placeholder="Маълумоти иловагӣ..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-paperclip"></i> Файлҳо</label>
+                    <input type="file" id="requestFiles" multiple accept="image/*,video/*,application/pdf,.doc,.docx">
+                    <div class="progress-container" id="progressContainer" style="display: none;">
+                        <div class="progress-bar"><div class="progress-fill" id="uploadProgressFill"></div></div>
+                        <div id="progressText" style="font-size: 11px; margin-top: 6px; color: var(--text-secondary);"></div>
+                    </div>
+                    <div class="file-list" id="fileListPreview"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeRequestModal()">Бекор</button>
+                <button type="submit" class="btn-primary">Сабт</button>
+            </div>
+        </form>
+    </div>
+</div>
+ 
+ 
+<!-- Modal: View Request Details -->
+<div id="viewRequestModal" class="modal">
+    <div class="modal-content view-modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-info-circle"></i> Маълумоти заявка</h2>
+            <span class="close" onclick="closeViewModal()">&times;</span>
+        </div>
+        <div id="viewRequestContent" class="modal-body"></div>
+        <div class="modal-footer">
+            <button class="btn-secondary" style="background:var(--accent-red);color:white;border-color:var(--accent-red);" id="viewDeleteBtn" onclick="deleteRequestFromView()"><i class="fas fa-trash-alt"></i> Нест кардан</button>
+            <button class="btn-secondary" onclick="closeViewModal()">Пӯшидан</button>
+        </div>
+    </div>
+</div>
+ 
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+// ==================== ГЛОБАЛӢ ====================
+let currentBoardId = null;
+let allBoards = [];
+let allColumns = [];
+let allRequests = [];
+let currentUserId = {{ session.user_id }};
+let currentUserRole = "{{ session.role }}";
+let draggedColumnId = null;
+let draggedCard = null;
+let filterTimeout = null;
+ 
+// ==================== BUG FIX: PER-MODAL FILES ====================
+// Instead of a global currentFiles, we use modalFiles which is ALWAYS
+// freshly initialized when opening create/edit modal.
+// This prevents file leaking between requests.
+let modalFiles = [];
+ 
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadBoards();
+    loadUsersForSelect();
+    setupAutoCalculate();
+    setTimeout(loadFilters, 500);
+});
+ 
+// ==================== AUTO CALCULATE PRICE PER M2 ====================
+function setupAutoCalculate() {
+    const totalPriceInput = document.getElementById('totalPrice');
+    const areaInput = document.getElementById('area');
+    const pricePerM2Input = document.getElementById('pricePerM2');
+ 
+    function calculate() {
+        const totalPrice = parseFloat(totalPriceInput.value);
+        const area = parseFloat(areaInput.value);
+        if (totalPrice > 0 && area > 0) {
+            pricePerM2Input.value = Math.round(totalPrice / area);
+        }
+    }
+ 
+    totalPriceInput.addEventListener('input', calculate);
+    areaInput.addEventListener('input', calculate);
+}
+ 
+ 
+async function loadUsersForSelect() {
+    const res = await fetch('/api/users/list');
+    const users = await res.json();
+    const select = document.getElementById('executorId');
+    select.innerHTML = '<option value="">Интихоб...</option>' + 
+        users.map(u => `<option value="${u.id}">${escapeHtml(u.full_name)} (${u.category})</option>`).join('');
+    
+    const filter = document.getElementById('authorFilter');
+    filter.innerHTML = '<option value="all">Ҳама</option>' + 
+        users.map(u => `<option value="${u.id}">${escapeHtml(u.full_name)}</option>`).join('');
+}
+ 
+// ==================== BOARD API ====================
+async function loadBoards() {
+    try {
+        const res = await fetch('/api/requests-boards');
+        allBoards = await res.json();
+        if (allBoards.length && !currentBoardId) currentBoardId = allBoards[0].id;
+        if (currentBoardId) await loadBoardData();
+        renderBoardsPanel();
+        updateBoardUI();
+        if (!allBoards.length) document.getElementById('kanbanBoard').innerHTML = '<div class="loading"><i class="fas fa-inbox" style="font-size:32px;"></i><span>Доска нест. Доскаи аввалро эҷод кунед!</span></div>';
+    } catch(e) { console.error(e); }
+}
+ 
+async function loadBoardData() {
+    if (!currentBoardId) return;
+    await Promise.all([loadColumns(), loadRequests()]);
+    renderKanbanBoard();
+    updateTotalCount();
+}
+ 
+async function loadColumns() {
+    try {
+        const res = await fetch(`/api/requests-boards/${currentBoardId}/columns`);
+        allColumns = await res.json();
+        updateColumnFilter();
+    } catch(e) { allColumns = []; }
+}
+ 
+async function loadRequests() {
+    try {
+        const res = await fetch(`/api/requests-board/${currentBoardId}/requests`);
+        allRequests = await res.json();
+        document.getElementById('totalRequestsCount').textContent = allRequests.length;
+    } catch(e) { allRequests = []; }
+}
+ 
+function renderBoardsPanel() {
+    const panel = document.getElementById('boardsBottomPanel');
+    panel.innerHTML = allBoards.map(b => `
+        <div class="board-tab ${currentBoardId === b.id ? 'active' : ''}" onclick="switchBoard(${b.id})">
+            <div class="board-tab-icon" style="background:${b.color || '#3b82f6'}"><i class="fas fa-chalkboard"></i></div>
+            <span class="board-tab-name">${escapeHtml(b.title)}</span>
+        </div>
+    `).join('') + `<div class="board-tab create-board-tab" onclick="showAddBoardModal()"><i class="fas fa-plus"></i><span>Нав</span></div>`;
+}
+ 
+function updateBoardUI() {
+    const b = allBoards.find(b => b.id === currentBoardId);
+    if(b) {
+        document.getElementById('currentBoardTitle').textContent = b.title;
+        document.getElementById('boardContainer').style.background = b.color || '#f8fafc';
+    }
+}
+ 
+async function switchBoard(id) {
+    currentBoardId = id;
+    await loadBoardData();
+    renderBoardsPanel();
+    updateBoardUI();
+    resetFilters();
+    showToast('Доска иваз шуд');
+}
+ 
+function updateColumnFilter() {
+    const sel = document.getElementById('columnFilter');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="all">Ҳама колонкаҳо</option>' + allColumns.map(c => `<option value="${c.id}">${escapeHtml(c.title)}</option>`).join('');
+    if (prev) sel.value = prev;
+}
+ 
+ 
+// ==================== RENDER ====================
+function renderKanbanBoard() {
+    const container = document.getElementById('kanbanBoard');
+    if (!allColumns.length) {
+        container.innerHTML = `<div class="add-column-btn" onclick="showAddColumnModal()"><i class="fas fa-plus"></i> Колонкаи аввалро эҷод кунед</div>`;
+        return;
+    }
+    
+    const sortedCols = [...allColumns].sort((a,b) => a.order_index - b.order_index);
+    
+    container.innerHTML = sortedCols.map(col => `
+        <div class="kanban-column" data-column-id="${col.id}" data-column-title="${escapeHtml(col.title)}"
+             ondragover="handleColumnDragOver(event)" ondrop="handleColumnDrop(event)" ondragleave="handleDragLeave(event)">
+            <div class="column-header" style="border-bottom-color: ${col.color || '#3b82f6'}">
+                <div class="column-left">
+                    <i class="fas fa-grip-vertical column-drag-handle" draggable="true" 
+                       ondragstart="handleColumnDragStart(event, ${col.id})" ondragend="handleDragEnd(event)"></i>
+                    <div class="column-title"><h3>${escapeHtml(col.title)}</h3></div>
+                    <span class="column-badge">${allRequests.filter(r => r.column_id === col.id).length}</span>
+                </div>
+                <div class="column-actions">
+                    <i class="fas fa-edit" onclick="event.stopPropagation(); editColumn(${col.id})" title="Таҳрир"></i>
+                    <i class="fas fa-trash-alt" onclick="event.stopPropagation(); deleteColumn(${col.id})" title="Нест кардан" style="color: var(--accent-red);"></i>
+                </div>
+            </div>
+            <div class="cards-container" data-column-id="${col.id}"
+                 ondragover="handleCardDragOver(event)" ondrop="handleCardDrop(event)">
+                ${renderCards(col.id)}
+            </div>
+        </div>
+    `).join('');
+    
+    container.innerHTML += `<div class="add-column-btn" onclick="showAddColumnModal()"><i class="fas fa-plus"></i> Колонкаи нав</div>`;
+}
+ 
+function renderCards(columnId) {
+    const requests = allRequests.filter(r => r.column_id === columnId).sort((a,b) => (a.order_index || 0) - (b.order_index || 0));
+    if (!requests.length) return '<div class="empty-column-msg"><i class="fas fa-inbox"></i> Заявка нест</div>';
+    
+    return requests.map(req => {
+        let files = [];
+        try { files = req.files ? JSON.parse(req.files) : []; } catch(e) { files = []; }
+        return `
+        <div class="request-card" data-request-id="${req.id}" data-order="${req.order_index || 0}" draggable="true"
+             ondragstart="handleCardDragStart(event)" ondragend="handleCardDragEnd(event)"
+             ondblclick="viewRequest(${req.id})">
+            <div class="card-header">
+                <span class="card-name">${escapeHtml(req.client_name)}</span>
+                <div class="card-actions">
+                    <button onclick="event.stopPropagation(); editRequest(${req.id})" title="Таҳрир"><i class="fas fa-pen"></i></button>
+                    <button onclick="event.stopPropagation(); deleteRequest(${req.id})" title="Нест кардан"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+            <div class="card-phone"><i class="fas fa-phone-alt"></i> ${escapeHtml(req.phone)}</div>
+            <div class="card-info">
+                <span class="info-tag"><i class="fas fa-building"></i> ${escapeHtml(req.property_type)}</span>
+                <span class="info-tag"><i class="fas fa-ruler-combined"></i> ${req.area} м²</span>
+                <span class="info-tag"><i class="fas fa-door-open"></i> ${req.rooms} хона</span>
+            </div>
+            <div class="card-info">
+                <span class="info-tag"><i class="fas fa-credit-card"></i> ${formatPrice(req.total_price)} C</span>
+                <span class="info-tag"><i class="fas fa-chart-line"></i> ${formatPrice(req.price_per_m2)} C/м²</span>
+            </div>
+            ${files.length ? `
+            <div class="files-preview">
+                ${files.slice(0, 3).map(f => `
+                    <div class="file-thumb" onclick="event.stopPropagation(); window.open('${f.path}', '_blank')">
+                        ${f.type === 'image' ? `<img src="${f.path}" alt="preview">` : f.type === 'video' ? `<video src="${f.path}"></video>` : `<i class="fas fa-file-alt"></i>`}
+                    </div>
+                `).join('')}
+                ${files.length > 3 ? `<div class="file-thumb" onclick="event.stopPropagation(); viewRequest(${req.id})"><span style="font-size:9px;font-weight:700;">+${files.length-3}</span></div>` : ''}
+            </div>
+            ` : ''}
+            <div class="card-meta">
+                <span><i class="far fa-calendar-alt"></i> ${new Date(req.created_date).toLocaleDateString()}</span>
+                <span><i class="fas fa-user-check"></i> ${escapeHtml(req.executor_name || '—')}</span>
+            </div>
+        </div>`;
+    }).join('');
+}
+ 
+ 
+// ==================== DRAG & DROP ====================
+function handleColumnDragStart(e, columnId) {
+    draggedColumnId = columnId;
+    e.dataTransfer.setData('text/plain', columnId);
+    e.dataTransfer.effectAllowed = 'move';
+}
+ 
+function handleColumnDragOver(e) {
+    e.preventDefault();
+    const col = e.target.closest('.kanban-column');
+    if (col && draggedColumnId && col.dataset.columnId != draggedColumnId) {
+        col.classList.add('drag-over');
+    }
+}
+ 
+function handleDragLeave(e) {
+    const col = e.target.closest('.kanban-column');
+    if (col) col.classList.remove('drag-over');
+}
+ 
+function handleDragEnd(e) {
+    document.querySelectorAll('.kanban-column').forEach(c => c.classList.remove('drag-over'));
+    draggedColumnId = null;
+}
+ 
+async function handleColumnDrop(e) {
+    e.preventDefault();
+    const targetCol = e.target.closest('.kanban-column');
+    if (!targetCol || !draggedColumnId) return;
+    
+    targetCol.classList.remove('drag-over');
+    const targetId = parseInt(targetCol.dataset.columnId);
+    const sourceId = draggedColumnId;
+    if (sourceId === targetId) return;
+    
+    await fetch(`/api/requests-columns/${sourceId}/order`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ target_id: targetId })
+    });
+    
+    draggedColumnId = null;
+    await loadColumns();
+    renderKanbanBoard();
+    showToast('Колонка ҷой иваз шуд');
+}
+ 
+function handleCardDragStart(e) {
+    e.stopPropagation();
+    const card = e.target.closest('.request-card');
+    if (!card) return;
+    draggedCard = card;
+    card.classList.add('dragging');
+    e.dataTransfer.setData('text/plain', card.dataset.requestId);
+    e.dataTransfer.effectAllowed = 'move';
+}
+ 
+function handleCardDragEnd(e) {
+    document.querySelectorAll('.request-card').forEach(c => c.classList.remove('dragging', 'drag-over-top', 'drag-over-bottom'));
+    document.querySelectorAll('.cards-container').forEach(c => c.classList.remove('drag-over'));
+    draggedCard = null;
+}
+ 
+function handleCardDragOver(e) {
+    e.preventDefault();
+    const card = e.target.closest('.request-card');
+    const container = e.target.closest('.cards-container');
+    
+    // Clear previous highlights
+    document.querySelectorAll('.request-card.drag-over-top, .request-card.drag-over-bottom').forEach(c => {
+        if (c !== card) { c.classList.remove('drag-over-top', 'drag-over-bottom'); }
+    });
+    
+    if (card && draggedCard && card !== draggedCard) {
+        const rect = card.getBoundingClientRect();
+        const mouseY = e.clientY;
+        const isTop = mouseY < rect.top + rect.height / 2;
+        
+        card.classList.remove('drag-over-top', 'drag-over-bottom');
+        if (isTop) {
+            card.classList.add('drag-over-top');
+        } else {
+            card.classList.add('drag-over-bottom');
+        }
+    }
+}
+ 
+async function handleCardDrop(e) {
+    e.preventDefault();
+    const targetCard = e.target.closest('.request-card');
+    const targetContainer = e.target.closest('.cards-container');
+    const leadId = parseInt(e.dataTransfer.getData('text/plain'));
+    
+    document.querySelectorAll('.request-card').forEach(c => c.classList.remove('drag-over-top', 'drag-over-bottom'));
+    document.querySelectorAll('.cards-container').forEach(c => c.classList.remove('drag-over'));
+    
+    let newColumnId = parseInt(targetContainer?.dataset.columnId);
+    let newOrder = null;
+    
+    if (targetCard) {
+        newColumnId = parseInt(targetCard.closest('.cards-container').dataset.columnId);
+        const rect = targetCard.getBoundingClientRect();
+        const mouseY = e.clientY;
+        const isTop = mouseY < rect.top + rect.height / 2;
+        const currentOrder = parseInt(targetCard.dataset.order);
+        newOrder = isTop ? currentOrder : currentOrder + 1;
+    }
+    
+    await fetch('/api/requests-move', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ request_id: leadId, column_id: newColumnId, order_index: newOrder })
+    });
+    
+    await loadRequests();
+    renderKanbanBoard();
+    updateTotalCount();
+    showToast('Заявка ҷой иваз шуд');
+}
+ 
+ 
+// ==================== FILTERS ====================
+function getFloorNumber(floorValue) {
+    if (floorValue === null || floorValue === undefined) return null;
+    const str = String(floorValue);
+    const parts = str.split('/');
+    return parseInt(parts[0]);
+}
+ 
+function filterRequests() {
+    if (filterTimeout) clearTimeout(filterTimeout);
+    filterTimeout = setTimeout(() => {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const type = document.getElementById('typeFilter').value;
+        const author = document.getElementById('authorFilter').value;
+        const dateFilter = document.getElementById('dateFilter').value;
+        const columnFilter = document.getElementById('columnFilter').value;
+        const priceMin = parseFloat(document.getElementById('priceMinFilter').value) || null;
+        const priceMax = parseFloat(document.getElementById('priceMaxFilter').value) || null;
+        const priceM2Min = parseFloat(document.getElementById('priceM2MinFilter').value) || null;
+        const priceM2Max = parseFloat(document.getElementById('priceM2MaxFilter').value) || null;
+        const areaMin = parseFloat(document.getElementById('areaMinFilter').value) || null;
+        const areaMax = parseFloat(document.getElementById('areaMaxFilter').value) || null;
+        const floorMin = parseInt(document.getElementById('floorMinFilter').value) || null;
+        const floorMax = parseInt(document.getElementById('floorMaxFilter').value) || null;
+        
+        let visibleCards = 0;
+        document.querySelectorAll('.request-card').forEach(card => {
+            const reqId = parseInt(card.dataset.requestId);
+            const req = allRequests.find(r => r.id === reqId);
+            if (!req) return;
+            
+            let show = true;
+            if (search && !req.client_name.toLowerCase().includes(search) && !req.phone.includes(search) && !req.address.toLowerCase().includes(search)) show = false;
+            if (type !== 'all' && req.property_type !== type) show = false;
+            if (author !== 'all' && req.author_id != author) show = false;
+            if (columnFilter !== 'all' && req.column_id != columnFilter) show = false;
+            
+            if (priceMin !== null && req.total_price < priceMin) show = false;
+            if (priceMax !== null && req.total_price > priceMax) show = false;
+            if (priceM2Min !== null && req.price_per_m2 < priceM2Min) show = false;
+            if (priceM2Max !== null && req.price_per_m2 > priceM2Max) show = false;
+            if (areaMin !== null && req.area < areaMin) show = false;
+            if (areaMax !== null && req.area > areaMax) show = false;
+            
+            if (floorMin !== null || floorMax !== null) {
+                const floorNum = getFloorNumber(req.floor);
+                if (floorMin !== null && floorNum < floorMin) show = false;
+                if (floorMax !== null && floorNum > floorMax) show = false;
+            }
+            
+            if (dateFilter === 'today') {
+                const today = new Date().toDateString();
+                if (new Date(req.created_date).toDateString() !== today) show = false;
+            } else if (dateFilter === 'week') {
+                const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+                if (new Date(req.created_date) < weekAgo) show = false;
+            } else if (dateFilter === 'month') {
+                const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
+                if (new Date(req.created_date) < monthAgo) show = false;
+            }
+            
+            card.style.display = show ? 'block' : 'none';
+            if (show) visibleCards++;
+        });
+        document.getElementById('totalRequestsCount').textContent = visibleCards;
+    }, 200);
+}
+ 
+function saveFilters() {
+    const filters = {
+        search: document.getElementById('searchInput').value,
+        type: document.getElementById('typeFilter').value,
+        author: document.getElementById('authorFilter').value,
+        date: document.getElementById('dateFilter').value,
+        column: document.getElementById('columnFilter').value,
+        priceMin: document.getElementById('priceMinFilter').value,
+        priceMax: document.getElementById('priceMaxFilter').value,
+        priceM2Min: document.getElementById('priceM2MinFilter').value,
+        priceM2Max: document.getElementById('priceM2MaxFilter').value,
+        areaMin: document.getElementById('areaMinFilter').value,
+        areaMax: document.getElementById('areaMaxFilter').value,
+        floorMin: document.getElementById('floorMinFilter').value,
+        floorMax: document.getElementById('floorMaxFilter').value,
+    };
+    document.cookie = `kanban_filters=${encodeURIComponent(JSON.stringify(filters))};path=/;max-age=86400`;
+}
+ 
+function loadFilters() {
+    try {
+        const match = document.cookie.match(/kanban_filters=([^;]+)/);
+        if (!match) return;
+        const filters = JSON.parse(decodeURIComponent(match[1]));
+        if (filters.search) document.getElementById('searchInput').value = filters.search;
+        if (filters.type) document.getElementById('typeFilter').value = filters.type;
+        if (filters.author) document.getElementById('authorFilter').value = filters.author;
+        if (filters.date) document.getElementById('dateFilter').value = filters.date;
+        if (filters.column) document.getElementById('columnFilter').value = filters.column;
+        if (filters.priceMin) document.getElementById('priceMinFilter').value = filters.priceMin;
+        if (filters.priceMax) document.getElementById('priceMaxFilter').value = filters.priceMax;
+        if (filters.priceM2Min) document.getElementById('priceM2MinFilter').value = filters.priceM2Min;
+        if (filters.priceM2Max) document.getElementById('priceM2MaxFilter').value = filters.priceM2Max;
+        if (filters.areaMin) document.getElementById('areaMinFilter').value = filters.areaMin;
+        if (filters.areaMax) document.getElementById('areaMaxFilter').value = filters.areaMax;
+        if (filters.floorMin) document.getElementById('floorMinFilter').value = filters.floorMin;
+        if (filters.floorMax) document.getElementById('floorMaxFilter').value = filters.floorMax;
+        filterRequests();
+    } catch(e) {}
+}
+ 
+function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('typeFilter').value = 'all';
+    document.getElementById('authorFilter').value = 'all';
+    document.getElementById('dateFilter').value = 'all';
+    document.getElementById('columnFilter').value = 'all';
+    document.getElementById('priceMinFilter').value = '';
+    document.getElementById('priceMaxFilter').value = '';
+    document.getElementById('priceM2MinFilter').value = '';
+    document.getElementById('priceM2MaxFilter').value = '';
+    document.getElementById('areaMinFilter').value = '';
+    document.getElementById('areaMaxFilter').value = '';
+    document.getElementById('floorMinFilter').value = '';
+    document.getElementById('floorMaxFilter').value = '';
+    document.cookie = 'kanban_filters=;path=/;max-age=0';
+    filterRequests();
+    showToast('Филтрҳо тоза шуданд');
+}
+ 
+ 
+// ==================== CRUD ====================
+async function createColumn(title, color) {
+    const res = await fetch('/api/requests-columns', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ board_id: currentBoardId, title, color })
+    });
+    if (res.ok) { await loadColumns(); renderKanbanBoard(); showToast('Колонка эҷод шуд'); }
+}
+ 
+async function updateColumn(id, title, color) {
+    const res = await fetch(`/api/requests-columns/${id}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ title, color })
+    });
+    if (res.ok) { await loadColumns(); renderKanbanBoard(); showToast('Колонка нав шуд'); }
+}
+ 
+async function deleteColumn(id) {
+    if (!confirm('Колонкаро нест кардан? Ҳама заявкаҳо нест мешаванд!')) return;
+    const res = await fetch(`/api/requests-columns/${id}`, { method: 'DELETE' });
+    if (res.ok) { await loadColumns(); await loadRequests(); renderKanbanBoard(); updateTotalCount(); showToast('Колонка нест шуд'); }
+}
+ 
+async function createRequest(data) {
+    const res = await fetch('/api/requests-new', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    return res.ok;
+}
+ 
+async function updateRequestData(id, data) {
+    const res = await fetch(`/api/requests-update/${id}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    return res.ok;
+}
+ 
+async function deleteRequest(id) {
+    if (!confirm('Заявкаро нест кардан?')) return;
+    const res = await fetch(`/api/requests-delete/${id}`, { method: 'DELETE' });
+    if (res.ok) { await loadRequests(); renderKanbanBoard(); updateTotalCount(); showToast('Заявка нест шуд'); }
+}
+ 
+// ==================== UPLOAD ====================
+async function uploadFilesWithProgress(files, onProgress) {
+    const uploaded = [];
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const xhr = new XMLHttpRequest();
+        const promise = new Promise((resolve, reject) => {
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable && onProgress) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    onProgress(i, files.length, file.name, percent);
+                }
+            });
+            xhr.onload = () => {
+                if (xhr.status === 200) { resolve(JSON.parse(xhr.responseText)); }
+                else { reject(); }
+            };
+            xhr.onerror = reject;
+            xhr.open('POST', '/api/upload-request-file');
+            xhr.send(formData);
+        });
+        const result = await promise;
+        uploaded.push(result);
+    }
+    return uploaded;
+}
+ 
+ 
+// ==================== VIEW REQUEST WITH COPY ====================
+let currentViewRequestId = null;
+let currentViewFiles = [];
+ 
+async function viewRequest(id) {
+    const req = allRequests.find(r => r.id === id);
+    if (!req) return;
+    
+    currentViewRequestId = id;
+    // BUG FIX: Deep clone files for this specific request
+    currentViewFiles = req.files ? JSON.parse(JSON.stringify(JSON.parse(req.files))) : [];
+    
+    renderViewModal(req, currentViewFiles);
+    openModal('viewRequestModal');
+}
+ 
+function renderViewModal(req, files) {
+    const copyData = `${req.property_type}\n📍 Суроға: ${req.address}\n📏 Масоҳат: ${req.area} м²\n🚪 Ҳуҷраҳо: ${req.rooms}\n🪟 Тирезаҳо: ${req.windows}\n🏢 Ошёна: ${req.floor}/${req.total_floors}\n💰 Нархи умумӣ: ${formatPrice(req.total_price)} C\n📈 Нархи як м²: ${formatPrice(req.price_per_m2)} C/м²`;
+    
+    const content = `
+        <div class="info-grid">
+            <div class="info-item"><div class="info-label"><i class="fas fa-building"></i> Намуд</div><div class="info-value">${escapeHtml(req.property_type)}</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-map-marker-alt"></i> Суроға</div><div class="info-value">${escapeHtml(req.address)}</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-ruler-combined"></i> Масоҳат</div><div class="info-value">${req.area} м²</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-door-open"></i> Ҳуҷраҳо</div><div class="info-value">${req.rooms}</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-window-maximize"></i> Тирезаҳо</div><div class="info-value">${req.windows}</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-layer-group"></i> Ошёна</div><div class="info-value">${req.floor} / ${req.total_floors}</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-credit-card"></i> Нархи умумӣ</div><div class="info-value">${formatPrice(req.total_price)} C</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-chart-line"></i> Нархи як м²</div><div class="info-value">${formatPrice(req.price_per_m2)} C/м²</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-phone-alt"></i> Телефон</div><div class="info-value">${escapeHtml(req.phone)}</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-user"></i> Мизоҷ</div><div class="info-value">${escapeHtml(req.client_name)}</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-user-check"></i> Иҷрокунанда</div><div class="info-value">${escapeHtml(req.executor_name)}</div></div>
+            <div class="info-item"><div class="info-label"><i class="fas fa-user"></i> Муаллиф</div><div class="info-value">${escapeHtml(req.author_name)}</div></div>
+            <div class="info-item full-width"><div class="info-label"><i class="fas fa-calendar"></i> Сана</div><div class="info-value">${new Date(req.created_date).toLocaleString()}</div></div>
+            ${req.comment ? `<div class="info-item full-width"><div class="info-label"><i class="fas fa-comment"></i> Шарҳ</div><div class="info-value">${escapeHtml(req.comment)}</div></div>` : ''}
+        </div>
+        <div style="margin-bottom: 16px; display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="copy-btn" id="copyMainDataBtn"><i class="fas fa-copy"></i> Нусхабардорӣ</button>
+            <button class="copy-btn" id="sendWhatsappBtn" style="background:var(--accent-green);box-shadow:0 2px 8px rgba(16,185,129,0.25);"><i class="fab fa-whatsapp"></i> Ватсап</button>
+        </div>
+        ${files.length ? `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <strong style="font-size:13px;"><i class="fas fa-paperclip"></i> Файлҳо (${files.length})</strong>
+            <small style="color:var(--text-tertiary);font-size:10px;"><i class="fas fa-info-circle"></i> Кашед барои иваз кардани ҷой</small>
+        </div>
+        <div class="media-gallery" id="mediaGallery">
+            ${files.map((f, idx) => `
+                <div class="media-item" draggable="true" data-idx="${idx}" data-file-path="${f.path}" data-file-name="${escapeHtml(f.name || '')}" style="cursor:grab;">
+                    <div style="position:absolute;top:4px;left:6px;font-size:9px;background:rgba(15,23,42,0.7);color:white;border-radius:4px;padding:2px 5px;font-weight:600;">${idx+1}</div>
+                    ${f.type === 'image' ? `<img src="${f.path}" alt="${escapeHtml(f.name || '')}" onclick="window.open('${f.path}', '_blank')">` : 
+                      f.type === 'video' ? `<video src="${f.path}" onclick="window.open('${f.path}', '_blank')"></video>` : 
+                      `<div class="file-icon" onclick="window.open('${f.path}', '_blank')"><i class="fas fa-file-alt"></i></div>`}
+                    <button class="copy-media-btn" title="Нусхабардорӣ"><i class="fas fa-copy"></i></button>
+                </div>
+            `).join('')}
+        </div>
+        ` : ''}
+    `;
+    document.getElementById('viewRequestContent').innerHTML = content;
+    
+    // Copy data button
+    document.getElementById('copyMainDataBtn').addEventListener('click', () => {
+        navigator.clipboard.writeText(copyData).then(() => {
+            showToast('Маълумотҳо нусхабардорӣ шуданд');
+        }).catch(() => {
+            const ta = document.createElement('textarea');
+            ta.value = copyData;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+            showToast('Маълумотҳо нусхабардорӣ шуданд');
+        });
+    });
+    
+    // WhatsApp button
+    document.getElementById('sendWhatsappBtn').addEventListener('click', async () => {
+        const imageFiles = currentViewFiles.filter(f => f.type === 'image');
+        const waText = encodeURIComponent(copyData);
+        
+        if (imageFiles.length > 0) {
+            try { await navigator.clipboard.writeText(copyData); }
+            catch(e) {
+                const ta = document.createElement('textarea');
+                ta.value = copyData;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+            }
+            showToast('Матн нусхабардорӣ шуд! WhatsApp кушода мешавад...', 2000);
+            setTimeout(() => {
+                window.open(`https://wa.me/?text=${waText}`, '_blank');
+                imageFiles.forEach((f, i) => {
+                    setTimeout(() => { window.open(f.path, '_blank'); }, 300 * (i + 1));
+                });
+            }, 600);
+        } else {
+            window.open(`https://wa.me/?text=${waText}`, '_blank');
+        }
+    });
+    
+    // Copy media buttons
+    document.querySelectorAll('.copy-media-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const item = btn.closest('.media-item');
+            const filePath = item.dataset.filePath;
+            try {
+                const response = await fetch(filePath);
+                const blob = await response.blob();
+                if (blob.type === 'image/png') {
+                    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                } else if (blob.type.startsWith('image/')) {
+                    const imgBitmap = await createImageBitmap(blob);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = imgBitmap.width;
+                    canvas.height = imgBitmap.height;
+                    canvas.getContext('2d').drawImage(imgBitmap, 0, 0);
+                    const pngBlob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+                    await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+                } else {
+                    showToast('Ин намуди файл нусхабардорӣ намешавад', 2000);
+                    return;
+                }
+                showToast('Акс нусхабардорӣ шуд');
+            } catch (err) {
+                console.error(err);
+                showToast('Хатогӣ: аксро дастӣ нусхабардорӣ кунед', 3000);
+                window.open(filePath, '_blank');
+            }
+        });
+    });
+    
+    // Media gallery drag & drop
+    initMediaGalleryDnD(req);
+}
+ 
+ 
+function initMediaGalleryDnD(req) {
+    const gallery = document.getElementById('mediaGallery');
+    if (!gallery) return;
+    
+    let dragSrcIdx = null;
+    
+    gallery.querySelectorAll('.media-item').forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+            dragSrcIdx = parseInt(item.dataset.idx);
+            item.style.opacity = '0.5';
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        item.addEventListener('dragend', () => { item.style.opacity = '1'; });
+        item.addEventListener('dragover', (e) => { e.preventDefault(); item.style.border = '2px dashed var(--accent-blue)'; item.style.borderRadius = 'var(--radius-md)'; });
+        item.addEventListener('dragleave', () => { item.style.border = ''; });
+        item.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            item.style.border = '';
+            const targetIdx = parseInt(item.dataset.idx);
+            if (dragSrcIdx === null || dragSrcIdx === targetIdx) return;
+            
+            const newFiles = [...currentViewFiles];
+            const [moved] = newFiles.splice(dragSrcIdx, 1);
+            newFiles.splice(targetIdx, 0, moved);
+            currentViewFiles = newFiles;
+            
+            await updateRequestData(req.id, { files: currentViewFiles });
+            const idx = allRequests.findIndex(r => r.id === req.id);
+            if (idx !== -1) allRequests[idx].files = JSON.stringify(currentViewFiles);
+            
+            renderViewModal(req, currentViewFiles);
+            showToast('Ҷойи аксҳо иваз шуд');
+        });
+    });
+}
+ 
+async function deleteRequestFromView() {
+    if (!currentViewRequestId) return;
+    if (!confirm('Заявкаро нест кардан?')) return;
+    const res = await fetch(`/api/requests-delete/${currentViewRequestId}`, { method: 'DELETE' });
+    if (res.ok) {
+        closeViewModal();
+        await loadRequests();
+        renderKanbanBoard();
+        updateTotalCount();
+        showToast('Заявка нест шуд');
+    }
+}
+ 
+ 
+// ==================== MODALS ====================
+function showAddBoardModal() {
+    document.getElementById('boardModalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Доскаи нав';
+    document.getElementById('boardId').value = '';
+    document.getElementById('boardForm').reset();
+    openModal('boardModal');
+}
+ 
+function showSelectBoardModal() {
+    loadBoardsList();
+    openModal('selectBoardModal');
+}
+ 
+function showBoardSettings() {
+    const b = allBoards.find(b => b.id === currentBoardId);
+    if(b) {
+        document.getElementById('settingsBoardTitle').value = b.title;
+        document.getElementById('settingsBoardColor').value = b.color || '#f8fafc';
+        document.getElementById('settingsBoardIsPublic').value = b.is_public;
+        openModal('boardSettingsModal');
+    }
+}
+ 
+function showAddColumnModal() {
+    if(!currentBoardId) { alert('Аввал доскаро интихоб кунед'); return; }
+    document.getElementById('columnModalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Колонкаи нав';
+    document.getElementById('columnId').value = '';
+    document.getElementById('columnForm').reset();
+    document.getElementById('columnColor').value = '#3b82f6';
+    openModal('columnModal');
+}
+ 
+function showAddRequestModal() {
+    if(!currentBoardId) { alert('Аввал доскаро интихоб кунед'); return; }
+    if(!allColumns.length) { alert('Аввал колонка эҷод кунед'); return; }
+    document.getElementById('requestModalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Заявкаи нав';
+    document.getElementById('requestId').value = '';
+    document.getElementById('requestForm').reset();
+    document.getElementById('fileListPreview').innerHTML = '';
+    // BUG FIX: Always create a brand new empty array for new requests
+    modalFiles = [];
+    openModal('requestModal');
+}
+ 
+function openModal(id) {
+    const modal = document.getElementById(id);
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    document.body.classList.add('modal-open');
+}
+ 
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+    // Only remove body lock if no other modals are open
+    const anyOpen = document.querySelector('.modal.active');
+    if (!anyOpen) {
+        document.body.classList.remove('modal-open');
+    }
+}
+ 
+function closeBoardModal() { closeModal('boardModal'); }
+function closeSelectBoardModal() { closeModal('selectBoardModal'); }
+function closeBoardSettingsModal() { closeModal('boardSettingsModal'); }
+function closeColumnModal() { closeModal('columnModal'); }
+function closeRequestModal() { closeModal('requestModal'); modalFiles = []; }
+function closeViewModal() { closeModal('viewRequestModal'); }
+ 
+function editColumn(id) {
+    const col = allColumns.find(c => c.id === id);
+    if (col) {
+        document.getElementById('columnModalTitle').innerHTML = '<i class="fas fa-edit"></i> Таҳрири колонка';
+        document.getElementById('columnId').value = col.id;
+        document.getElementById('columnTitle').value = col.title;
+        document.getElementById('columnColor').value = col.color || '#3b82f6';
+        openModal('columnModal');
+    }
+}
+ 
+ 
+function editRequest(id) {
+    const req = allRequests.find(r => r.id === id);
+    if (!req) return;
+    
+    document.getElementById('requestModalTitle').innerHTML = '<i class="fas fa-edit"></i> Таҳрири заявка';
+    document.getElementById('requestId').value = req.id;
+    document.getElementById('propertyType').value = req.property_type;
+    document.getElementById('address').value = req.address;
+    document.getElementById('area').value = req.area;
+    document.getElementById('rooms').value = req.rooms;
+    document.getElementById('windows').value = req.windows;
+    document.getElementById('floor').value = req.floor;
+    document.getElementById('totalFloors').value = req.total_floors;
+    document.getElementById('totalPrice').value = req.total_price;
+    document.getElementById('pricePerM2').value = req.price_per_m2;
+    document.getElementById('phone').value = req.phone;
+    document.getElementById('clientName').value = req.client_name;
+    document.getElementById('executorId').value = req.executor_id;
+    document.getElementById('comment').value = req.comment || '';
+    
+    // BUG FIX: Deep clone the files array for THIS specific request
+    // This ensures editing one request's files never affects another request
+    modalFiles = [];
+    if (req.files) {
+        try {
+            const parsed = JSON.parse(req.files);
+            modalFiles = JSON.parse(JSON.stringify(parsed)); // Deep clone
+        } catch(e) {
+            modalFiles = [];
+        }
+    }
+    
+    renderFileListPreview();
+    openModal('requestModal');
+}
+ 
+function renderFileListPreview() {
+    const preview = document.getElementById('fileListPreview');
+    preview.innerHTML = '';
+    modalFiles.forEach((f, idx) => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.style.cssText = 'position:relative; display:inline-flex; flex-direction:column; align-items:center; gap:6px; padding:8px;';
+        if (f.type === 'image') {
+            item.innerHTML = `
+                <img src="${f.path}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border-color);">
+                <button type="button" onclick="removeExistingFile(${idx})" style="background:var(--accent-red);color:white;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:10px;font-weight:500;transition:var(--transition-fast);"><i class="fas fa-trash"></i></button>
+            `;
+        } else if (f.type === 'video') {
+            item.innerHTML = `
+                <video src="${f.path}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border-color);"></video>
+                <button type="button" onclick="removeExistingFile(${idx})" style="background:var(--accent-red);color:white;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:10px;font-weight:500;"><i class="fas fa-trash"></i></button>
+            `;
+        } else {
+            item.innerHTML = `
+                <div style="width:64px;height:64px;background:var(--bg-tertiary);border-radius:8px;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--border-color);"><i class="fas fa-file-alt" style="font-size:24px;color:var(--accent-blue);"></i></div>
+                <span style="font-size:10px;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(f.name || 'файл')}</span>
+                <button type="button" onclick="removeExistingFile(${idx})" style="background:var(--accent-red);color:white;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:10px;font-weight:500;"><i class="fas fa-trash"></i></button>
+            `;
+        }
+        preview.appendChild(item);
+    });
+}
+ 
+function removeExistingFile(idx) {
+    // BUG FIX: Only modifies the local modalFiles array, not any shared reference
+    modalFiles.splice(idx, 1);
+    renderFileListPreview();
+}
+ 
+ 
+function loadBoardsList() {
+    const c = document.getElementById('boardsListContainer');
+    c.innerHTML = allBoards.map(b => `
+        <div class="board-tab ${currentBoardId === b.id ? 'active' : ''}" style="margin-bottom:8px; display:flex; align-items:center; gap:10px; padding:12px; border-radius:var(--radius-md); cursor:pointer;" onclick="selectBoard(${b.id})">
+            <div class="board-tab-icon" style="background:${b.color || '#3b82f6'}"><i class="fas fa-chalkboard"></i></div>
+            <span style="flex:1;font-weight:500;">${escapeHtml(b.title)}</span>
+        </div>
+    `).join('');
+    if(!c.innerHTML) c.innerHTML = '<div style="padding:24px; text-align:center; color:var(--text-tertiary);">Доска нест</div>';
+}
+ 
+function filterBoardsList() {
+    const s = document.getElementById('boardSearch').value.toLowerCase();
+    document.querySelectorAll('#boardsListContainer .board-tab').forEach(tab => {
+        tab.style.display = tab.innerText.toLowerCase().includes(s) ? 'flex' : 'none';
+    });
+}
+ 
+function selectBoard(id) { switchBoard(id); closeSelectBoardModal(); }
+ 
+async function updateCurrentBoard() {
+    await updateBoard(currentBoardId, { 
+        title: document.getElementById('settingsBoardTitle').value, 
+        color: document.getElementById('settingsBoardColor').value, 
+        is_public: parseInt(document.getElementById('settingsBoardIsPublic').value) 
+    });
+    closeBoardSettingsModal();
+}
+ 
+async function deleteCurrentBoard() {
+    if(!confirm('Доскаро нест кардан? Ҳама заявкаҳо нест мешаванд!')) return;
+    await fetch(`/api/requests-boards/${currentBoardId}`, { method: 'DELETE' });
+    await loadBoards();
+    if(allBoards.length) currentBoardId = allBoards[0].id;
+    else currentBoardId = null;
+    await loadBoardData();
+    renderBoardsPanel();
+    updateBoardUI();
+    closeBoardSettingsModal();
+    showToast('Доска нест шуд');
+}
+ 
+async function updateBoard(id, data) {
+    await fetch(`/api/requests-boards/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+    await loadBoards();
+    if(currentBoardId === id) updateBoardUI();
+    showToast('Доска нав шуд');
+}
+ 
+function exportBoard() {
+    const dateFilter = document.getElementById('dateFilter').value;
+    const typeFilter = document.getElementById('typeFilter').value;
+    const authorFilter = document.getElementById('authorFilter').value;
+    window.location.href = `/api/requests-export/excel?board_id=${currentBoardId}&date_filter=${dateFilter}&type_filter=${typeFilter}&author_filter=${authorFilter}`;
+}
+ 
+function updateTotalCount() { document.getElementById('totalRequestsCount').textContent = allRequests.length; }
+ 
+function showToast(msg, duration = 2500) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.innerHTML = `<i class="fas fa-check-circle" style="color:var(--accent-green);"></i>${msg}`;
+    document.body.appendChild(t);
+    setTimeout(() => { 
+        t.style.animation = 'slideOutRight 0.3s ease forwards'; 
+        setTimeout(() => t.remove(), 300); 
+    }, duration);
+}
+ 
+function formatPrice(price) { return new Intl.NumberFormat('ru-RU').format(Math.round(price)); }
+ 
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
+}
+ 
+ 
+// ==================== FORMS ====================
+document.getElementById('boardForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('boardId').value;
+    const data = { title: document.getElementById('boardTitle').value, color: document.getElementById('boardColor').value, is_public: parseInt(document.getElementById('boardIsPublic').value) };
+    if(id) { await updateBoard(parseInt(id), data); }
+    else {
+        await fetch('/api/requests-boards', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+        await loadBoards();
+        if(allBoards.length) { currentBoardId = allBoards[0].id; await loadBoardData(); renderBoardsPanel(); updateBoardUI(); }
+    }
+    closeBoardModal();
+    showToast(id ? 'Доска нав шуд' : 'Доска эҷод шуд');
+});
+ 
+document.getElementById('columnForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('columnId').value;
+    if(id) { await updateColumn(parseInt(id), document.getElementById('columnTitle').value, document.getElementById('columnColor').value); }
+    else { await createColumn(document.getElementById('columnTitle').value, document.getElementById('columnColor').value); }
+    closeColumnModal();
+});
+ 
+document.getElementById('requestForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const requestId = document.getElementById('requestId').value;
+    const filesInput = document.getElementById('requestFiles');
+    
+    // BUG FIX: Start with a COPY of modalFiles (which is already isolated per-request)
+    let uploadedFiles = [...modalFiles];
+    
+    if (filesInput.files.length) {
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('uploadProgressFill');
+        const progressText = document.getElementById('progressText');
+        progressContainer.style.display = 'block';
+        
+        const newUploads = await uploadFilesWithProgress(Array.from(filesInput.files), (index, total, name, percent) => {
+            progressFill.style.width = `${percent}%`;
+            progressText.textContent = `Боргузорӣ: ${name} - ${percent}% (${index+1}/${total})`;
+        });
+        
+        // BUG FIX: Append new uploads to existing files (not replace)
+        uploadedFiles = [...uploadedFiles, ...newUploads];
+        
+        progressContainer.style.display = 'none';
+        progressFill.style.width = '0%';
+        progressText.textContent = '';
+    }
+    
+    const firstColumnId = allColumns.length ? allColumns[0].id : null;
+    if (!firstColumnId && !requestId) { alert('Аввал колонка эҷод кунед'); return; }
+    
+    const data = {
+        property_type: document.getElementById('propertyType').value,
+        address: document.getElementById('address').value,
+        area: parseFloat(document.getElementById('area').value),
+        rooms: parseInt(document.getElementById('rooms').value),
+        windows: parseInt(document.getElementById('windows').value),
+        floor: parseInt(document.getElementById('floor').value),
+        total_floors: parseInt(document.getElementById('totalFloors').value),
+        total_price: parseFloat(document.getElementById('totalPrice').value),
+        price_per_m2: parseFloat(document.getElementById('pricePerM2').value),
+        phone: document.getElementById('phone').value,
+        client_name: document.getElementById('clientName').value,
+        executor_id: parseInt(document.getElementById('executorId').value),
+        comment: document.getElementById('comment').value,
+        files: uploadedFiles,
+        column_id: firstColumnId,
+        board_id: currentBoardId,
+        order_index: requestId ? undefined : 0
+    };
+    
+    let success;
+    if (requestId) { success = await updateRequestData(parseInt(requestId), data); }
+    else { success = await createRequest(data); }
+    
+    if (success) {
+        closeRequestModal();
+        await loadRequests();
+        renderKanbanBoard();
+        updateTotalCount();
+        showToast(requestId ? 'Заявка нав шуд' : 'Заявка эҷод шуд');
+    } else { showToast('Хатогӣ ҳангоми сабт', 3000); }
+});
+ 
+// Color palette click
+document.querySelectorAll('.color-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+        document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        document.getElementById('columnColor').value = opt.dataset.color;
+    });
+});
+ 
+// Escape key to close modals
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeBoardModal(); closeSelectBoardModal(); closeBoardSettingsModal();
+        closeColumnModal(); closeRequestModal(); closeViewModal();
+    }
+});
+ 
+// Close modal when clicking backdrop
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+            const anyOpen = document.querySelector('.modal.active');
+            if (!anyOpen) document.body.classList.remove('modal-open');
+        }
+    });
+});
+</script>
+{% endblock %}
